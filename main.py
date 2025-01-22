@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import pandas as pd
 import unicodedata
+from openpyxl import load_workbook
 
 # Función para normalizar texto
 def normalizar_texto(texto):
@@ -94,7 +95,7 @@ def archivo_anexo():
     # Detectar y normalizar valores únicos de otras columnas
     columnas_procesar = [
         "TIPO SICE", "ESTADO SICE", "TIPO MMS", "Estado MMS",
-        "SISTEMA", "CAT", "TIPO", "NOMBRE DEL EQUIPO",
+        "SISTEMA", "TIPO", "NOMBRE DEL EQUIPO",
         "OTROS SISTEMAS", "EMPLAZAMIENTO", "LINEA", "TRATAMIENTO"
     ]
 
@@ -127,17 +128,91 @@ def actualizar_seleccion(campo, valor):
     variables[campo].set(valor)
     print(f"{campo} seleccionado: {valor}")
 
-# Función para exportar datos seleccionados
 def exportar_seleccion():
+    if data is None or data.empty:
+        messagebox.showwarning("Advertencia", "No hay datos cargados para filtrar.")
+        return
+
+    # Recoger las selecciones de los campos
     seleccion = {campo: variables[campo].get() for campo in variables if variables[campo].get() != "Seleccione"}
+
+    # Recoger palabras clave de los campos de descripción
+    palabras_clave_descripcion = {campo: variables_independientes[campo].get().strip().lower()
+                                   for campo in campos_independientes if variables_independientes[campo].get().strip()}
+
+    # Crear una copia del DataFrame original
     datos_filtrados = data.copy()
+
+    # Aplicar los filtros por selecciones generales
     for columna, valor in seleccion.items():
         if columna in datos_filtrados.columns:
-            datos_filtrados = datos_filtrados[datos_filtrados[columna] == valor]
+            if columna == "Fecha":  # Filtro especial para el año
+                try:
+                    valor = int(valor)  # Convertir el año seleccionado a entero
+                    fecha_inicio = f"{valor}-01-01"  # Inicio del año
+                    fecha_fin = f"{valor}-12-31"  # Fin del año
+
+                    # Filtrar datos dentro del rango del año
+                    datos_filtrados = datos_filtrados[
+                        (datos_filtrados["Fecha"] >= pd.to_datetime(fecha_inicio)) &
+                        (datos_filtrados["Fecha"] <= pd.to_datetime(fecha_fin))
+                    ]
+                except ValueError:
+                    messagebox.showerror("Error", "El valor del año seleccionado no es válido.")
+                    return
+            else:  # Filtro estándar para otras columnas
+                datos_filtrados = datos_filtrados[
+                    datos_filtrados[columna].astype(str).str.strip().str.lower() == valor.strip().lower()
+                ]
+
+    # Aplicar filtros basados en palabras clave de los campos de descripción
+    for columna, palabra_clave in palabras_clave_descripcion.items():
+        if columna in datos_filtrados.columns:
+            datos_filtrados = datos_filtrados[
+                datos_filtrados[columna].astype(str).str.lower().str.contains(palabra_clave, na=False)
+            ]
+
+    # Verificar si hay datos después de aplicar los filtros
+    if datos_filtrados.empty:
+        messagebox.showinfo("Sin resultados", "No hay datos que coincidan con los filtros seleccionados.")
+        return
+
+    # Cambiar el nombre de 'Unnamed: 0' a 'N°' y enumerar las filas
+    if "Unnamed: 0" in datos_filtrados.columns:
+        datos_filtrados = datos_filtrados.rename(columns={"Unnamed: 0": "N°"})
+    datos_filtrados["N°"] = range(1, len(datos_filtrados) + 1)  # Enumerar las filas
+
+    # Asegurarse de que la columna Fecha solo muestre la fecha (sin hora)
+    if "Fecha" in datos_filtrados.columns:
+        datos_filtrados["Fecha"] = datos_filtrados["Fecha"].dt.date  # Extraer solo la fecha
+
+    # Guardar los datos filtrados en un archivo Excel
     save_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
     if save_path:
-        datos_filtrados.to_excel(save_path, index=False)
-        print(f"Archivo exportado a: {save_path}")
+        datos_filtrados.to_excel(save_path, index=False)  # Exportar usando pandas
+
+        # Ajustar el ancho de columnas con openpyxl
+        try:
+            wb = load_workbook(save_path)  # Cargar el archivo guardado
+            ws = wb.active  # Obtener la hoja activa
+
+            # Ajustar el ancho de cada columna según su contenido
+            for column_cells in ws.columns:
+                max_length = 0
+                column_letter = column_cells[0].column_letter  # Letra de la columna (A, B, C, ...)
+                for cell in column_cells:
+                    if cell.value:  # Si la celda tiene un valor
+                        max_length = max(max_length, len(str(cell.value)))
+                adjusted_width = max_length + 2  # Ajustar el ancho con un pequeño margen
+                ws.column_dimensions[column_letter].width = adjusted_width
+
+            wb.save(save_path)  # Guardar los cambios
+            wb.close()
+            messagebox.showinfo("Éxito", f"Archivo exportado correctamente en:\n{save_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo ajustar el tamaño de las columnas: {e}")
+
+
 
 # Configuración de la ventana principal
 ventana = tk.Tk()
@@ -214,7 +289,7 @@ frame_campos.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)  # Espaciado unifor
 # Variables para los campos generales
 campos = [
     "Fecha", "Semana", "TIPO SICE", "ESTADO SICE", "TIPO MMS", "Estado MMS",
-    "SISTEMA", "CAT", "TIPO", "NOMBRE DEL EQUIPO", "OTROS SISTEMAS", 
+    "SISTEMA", "TIPO", "NOMBRE DEL EQUIPO", "OTROS SISTEMAS", 
     "EMPLAZAMIENTO", "LINEA", "TRATAMIENTO"
 ]
 variables = {campo: tk.StringVar(value="Seleccione") for campo in campos}
