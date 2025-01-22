@@ -17,61 +17,40 @@ def cambiar_a_menu():
         frame.pack_forget()
     frame_menu.pack(fill="both", expand=True)
 
+# Función para cargar el archivo Excel
 def archivo_anexo():
-    global data
+    global data  # Declarar la variable global
     # Seleccionar archivo Excel
     file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
     if not file_path:
         return
 
     try:
-        # Cargar el archivo a partir de la fila 5
-        data = pd.read_excel(file_path, skiprows=4)  # Saltar las primeras 4 filas
+        # Leer el archivo
+        data = pd.read_excel(file_path, skiprows=4)
+
+        # Limpiar nombres de columnas
+        data.columns = data.columns.str.strip().str.replace(r'\s+', ' ', regex=True)
+
+        # Validar columnas obligatorias
+        columnas_requeridas = [
+            "Estado MMS", "SISTEMA", "TIPO", "NOMBRE DEL EQUIPO",
+            "OTROS SISTEMAS", "EMPLAZAMIENTO", "LINEA", "TRATAMIENTO"
+        ]
+        columnas_faltantes = [col for col in columnas_requeridas if col not in data.columns]
+        if columnas_faltantes:
+            messagebox.showerror("Error", f"Columnas faltantes en el archivo: {', '.join(columnas_faltantes)}")
+            return
+
+        # Rellenar valores nulos con un texto predeterminado
+        for columna in columnas_requeridas:
+            data[columna] = data[columna].fillna("Desconocido").astype(str).str.strip()
+
+        print("Archivo cargado y validado correctamente.")
+        print(f"Total de filas: {len(data)}")
+
     except Exception as e:
-        print(f"Error al cargar el archivo: {e}")
-        return
-
-    # Validar columnas obligatorias
-    columnas_requeridas = ["Fecha", "TIPO SICE", "ESTADO SICE", "TIPO MMS"]
-    columnas_faltantes = [col for col in columnas_requeridas if col not in data.columns]
-    if columnas_faltantes:
-        print(f"Columnas faltantes en el archivo: {', '.join(columnas_faltantes)}")
-        return
-
-    # Asegurarse de que la columna "Fecha" sea formato datetime
-    data["Fecha"] = pd.to_datetime(data["Fecha"], errors="coerce")
-
-    # Mostrar estadísticas básicas
-    print("Archivo cargado correctamente:")
-    print(f" - Total de filas: {len(data)}")
-    print(f" - Total de columnas: {len(data.columns)}")
-    if "Fecha" in data.columns:
-        fecha_min = data["Fecha"].min()
-        fecha_max = data["Fecha"].max()
-        print(f" - Periodo de fechas: {fecha_min.date()} a {fecha_max.date()}")
-
-    # Identificar duplicados en las filas (opcional)
-    duplicados = data.duplicated(subset=["Fecha", "TIPO SICE", "ESTADO SICE"])
-    if duplicados.any():
-        print(f" - Filas duplicadas detectadas: {duplicados.sum()}")
-
-    # Extraer los años disponibles de la columna "Fecha"
-    if "Fecha" in data.columns:
-        anios_disponibles = data["Fecha"].dt.year.dropna().astype(int).unique().tolist()
-        anios_disponibles.sort()
-
-        if "Fecha" not in menus:
-            label_fecha = tk.Label(frame_campos, text="Fecha", bg="#2b2b2b", fg="white", font=("Arial", 10))
-            label_fecha.grid(row=0, column=0, padx=10, pady=5, sticky="e")
-            menus["Fecha"] = tk.OptionMenu(frame_campos, variables["Fecha"], *anios_disponibles, command=lambda v: actualizar_seleccion("Fecha", v))
-            menus["Fecha"].grid(row=0, column=1, padx=10, pady=5, sticky="w")
-        else:
-            menus["Fecha"].children["menu"].delete(0, "end")
-            for anio in anios_disponibles:
-                menus["Fecha"].children["menu"].add_command(
-                    label=anio,
-                    command=lambda v=anio: actualizar_seleccion("Fecha", v)
-                )
+        messagebox.showerror("Error", f"Error al cargar el archivo: {e}")
 
     # Actualizar semanas disponibles (si aplicable)
     if "Fecha" in data.columns:
@@ -126,7 +105,6 @@ def archivo_anexo():
 # Función para actualizar las selecciones y previsualizarlas
 def actualizar_seleccion(campo, valor):
     variables[campo].set(valor)
-    print(f"{campo} seleccionado: {valor}")
 
 def exportar_seleccion():
     if data is None or data.empty:
