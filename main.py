@@ -42,6 +42,32 @@ def archivo_anexo():
             messagebox.showerror("Error", f"Columnas faltantes en el archivo: {', '.join(columnas_faltantes)}")
             return
 
+                # Convertir la columna "Fecha" a formato datetime
+        if "Fecha" in data.columns:
+            data["Fecha"] = pd.to_datetime(data["Fecha"], errors="coerce")  # Convertir a datetime
+            data = data.dropna(subset=["Fecha"])  # Eliminar filas con fechas inválidas
+
+            # Extraer los años únicos
+            anios_disponibles = data["Fecha"].dt.year.dropna().astype(int).unique().tolist()
+            anios_disponibles.sort()
+
+            # Actualizar el menú desplegable para los años
+            if "Fecha" not in menus:
+                label_fecha = tk.Label(frame_campos, text="Fecha (Año)", bg="#2b2b2b", fg="white", font=("Arial", 10))
+                label_fecha.grid(row=0, column=0, padx=10, pady=5, sticky="e")
+                menus["Fecha"] = tk.OptionMenu(frame_campos, variables["Fecha"], *anios_disponibles, command=lambda v: actualizar_seleccion("Fecha", v))
+                menus["Fecha"].grid(row=0, column=1, padx=10, pady=5, sticky="w")
+            else:
+                menus["Fecha"].children["menu"].delete(0, "end")
+                for anio in anios_disponibles:
+                    menus["Fecha"].children["menu"].add_command(
+                        label=anio,
+                        command=lambda v=anio: actualizar_seleccion("Fecha", v)
+                    )
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al cargar el archivo: {e}")
+
         # Rellenar valores nulos con un texto predeterminado
         for columna in columnas_requeridas:
             data[columna] = data[columna].fillna("Desconocido").astype(str).str.strip()
