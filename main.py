@@ -172,10 +172,19 @@ def exportar_seleccion():
 
     # Aplicar filtros basados en palabras clave de los campos de descripción
     for columna, palabra_clave in palabras_clave_descripcion.items():
-        if columna in datos_filtrados.columns:
-            datos_filtrados = datos_filtrados[
-                datos_filtrados[columna].astype(str).str.lower().str.contains(palabra_clave, na=False)
-            ]
+        if columna in datos_filtrados.columns:  # Verificar que la columna existe
+            if palabra_clave:
+                # Dividir las palabras clave en una lista
+                palabras = palabra_clave.split()
+                # Asegurarse de que la columna no tenga valores nulos y sea cadena
+                datos_filtrados[columna] = datos_filtrados[columna].fillna("").astype(str).str.lower()
+
+                # Filtrar filas que contengan todas las palabras clave
+                for palabra in palabras:
+                    datos_filtrados = datos_filtrados[
+                        datos_filtrados[columna].str.contains(palabra, na=False)
+                    ]
+
 
     # Verificar si hay datos después de aplicar los filtros
     if datos_filtrados.empty:
@@ -216,8 +225,6 @@ def exportar_seleccion():
             messagebox.showinfo("Éxito", f"Archivo exportado correctamente en:\n{save_path}")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo ajustar el tamaño de las columnas: {e}")
-
-
 
 # Configuración de la ventana principal
 ventana = tk.Tk()
