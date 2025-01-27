@@ -395,7 +395,17 @@ def actualizar_logica(valor):
 # Variable global para la lógica (Y u O)
 logica_filtro = tk.StringVar(value="Y")  # Valor inicial: "Y"
 
-# Agregar la opción de lógica al lado de los campos de descripción
+# Configurar el frame_independiente para tener espacio adicional para el botón "Y/O"
+total_columnas_descripcion = 5  # Aumentar a 5 para incluir espacio adicional para el botón "Y/O"
+
+# Configurar las columnas para centrar el contenido
+for col in range(total_columnas_descripcion):
+    if col == 0 or col == total_columnas_descripcion - 1:  # Columnas vacías (izquierda y derecha)
+        frame_independiente.grid_columnconfigure(col, weight=1)  # Espacio expansible
+    else:  # Columnas con contenido
+        frame_independiente.grid_columnconfigure(col, weight=0)  # Fijas
+
+# Mover el botón "Y/O" a la derecha del frame_independiente
 label_logica = tk.Label(
     frame_independiente,
     text="Lógica (Y/O)",
@@ -403,7 +413,7 @@ label_logica = tk.Label(
     fg="white",
     font=("Arial", 10)
 )
-label_logica.grid(row=len(campos_independientes), column=0, padx=10, pady=5, sticky="e")
+label_logica.grid(row=0, column=3, padx=10, pady=5, sticky="e")  # Columna 3 para el texto "Lógica (Y/O)"
 
 menu_logica = tk.OptionMenu(
     frame_independiente,
@@ -412,7 +422,7 @@ menu_logica = tk.OptionMenu(
     command=actualizar_logica
 )
 menu_logica.config(width=10, bg="white", fg="#2b2b2b")
-menu_logica.grid(row=len(campos_independientes), column=1, padx=10, pady=5, sticky="w")
+menu_logica.grid(row=0, column=4, padx=10, pady=5, sticky="w")  # Columna 4 para el menú desplegable
 
 # Botón para exportar datos seleccionados
 boton_exportar = tk.Button(
