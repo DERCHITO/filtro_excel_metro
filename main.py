@@ -303,8 +303,8 @@ frame_campos = tk.Frame(frame_anexo, bg="#2b2b2b")
 frame_campos.grid(row=4, column=0, pady=10, sticky="nsew")
 
 # Configuración del frame_campos para centrar sus elementos
-frame_campos.grid_rowconfigure(0, weight=1)
-frame_campos.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)  # Espaciado uniforme
+frame_campos.grid_rowconfigure(0, weight=0)
+frame_campos.grid_columnconfigure((0, 1, 2, 3, 4), weight=0)  # Espaciado uniforme
 
 # Variables para los campos generales
 campos = [
@@ -317,11 +317,21 @@ menus = {}
 
 # Crear las columnas principales y centrarlas
 num_columnas = 3
+total_columnas = num_columnas * 2 + 2  # Añadir dos columnas vacías (izquierda y derecha)
+
+# Configurar las columnas para centrar el contenido
+for col in range(total_columnas):
+    if col == 0 or col == total_columnas - 1:  # Columnas vacías (izquierda y derecha)
+        frame_campos.grid_columnconfigure(col, weight=1)  # Espacio expansible
+    else:  # Columnas con contenido
+        frame_campos.grid_columnconfigure(col, weight=0)  # Fijas
+
+# Crear las columnas principales centradas
 for i, campo in enumerate(campos):
-    columna = i % num_columnas
+    columna = (i % num_columnas) * 2 + 1  # Ajustar posición dejando espacio a los lados
     fila = i // num_columnas
 
-    # Crear etiquetas y menús desplegables alineados al centro
+    # Crear etiquetas alineadas a la derecha
     label = tk.Label(
         frame_campos,
         text=campo,
@@ -329,11 +339,12 @@ for i, campo in enumerate(campos):
         fg="white",
         font=("Arial", 10)
     )
-    label.grid(row=fila, column=columna * 2, padx=10, pady=5, sticky="e")
+    label.grid(row=fila, column=columna, padx=10, pady=5, sticky="e")  # Alinear a la derecha
 
+    # Crear menús desplegables alineados a la izquierda
     menu = tk.OptionMenu(frame_campos, variables[campo], "Seleccione", command=lambda v, c=campo: actualizar_seleccion(c, v))
     menu.config(width=15, bg="white", fg="#2b2b2b")
-    menu.grid(row=fila, column=columna * 2 + 1, padx=5, pady=5, sticky="w")
+    menu.grid(row=fila, column=columna + 1, padx=10, pady=5, sticky="w")  # Alinear a la izquierda
     menus[campo] = menu
 
 # Crear un marco adicional para los campos de descripción independientes
