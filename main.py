@@ -69,9 +69,6 @@ def archivo_anexo():
         for columna in columnas_requeridas:
             data[columna] = data[columna].fillna("Desconocido").astype(str).str.strip()
 
-        print("Archivo cargado y validado correctamente.")
-        print(f"Total de filas: {len(data)}")
-
     except Exception as e:
         messagebox.showerror("Error", f"Error al cargar el archivo: {e}")
 
@@ -137,12 +134,10 @@ def exportar_seleccion():
 
     # Recoger las selecciones de los campos generales
     seleccion = {campo: variables[campo].get() for campo in variables if variables[campo].get() != "Seleccione"}
-    print("Selección general:", seleccion)
 
     # Recoger palabras clave de los campos de descripción
     palabras_clave_descripcion = {campo: variables_independientes[campo].get().strip().lower()
                                    for campo in campos_independientes if variables_independientes[campo].get().strip()}
-    print("Palabras clave de los campos de descripción:", palabras_clave_descripcion)
 
     # Crear una copia del DataFrame original
     datos_filtrados = data.copy()
@@ -184,12 +179,10 @@ def exportar_seleccion():
                 # Lógica de filtro: Y u O
                 if logica_filtro.get() == "Y":  # Lógica AND (todas las palabras deben coincidir)
                     for palabra in palabras:
-                        print(f"Filtrando por la palabra (AND): {palabra} en la columna {columna}")
                         datos_filtrados = datos_filtrados[
                             datos_filtrados[columna].str.contains(palabra, na=False)
                         ]
                 elif logica_filtro.get() == "O":  # Lógica OR (al menos una palabra debe coincidir)
-                    print(f"Filtrando por las palabras (OR): {palabras} en la columna {columna}")
                     datos_filtrados = datos_filtrados[
                         datos_filtrados[columna].apply(lambda x: any(palabra in x for palabra in palabras))
                     ]
@@ -390,7 +383,6 @@ for i, campo in enumerate(campos_independientes):
 
 def actualizar_logica(valor):
     logica_filtro.set(valor)
-    print(f"Lógica de filtro actualizada a: {valor}")
 
 # Variable global para la lógica (Y u O)
 logica_filtro = tk.StringVar(value="Y")  # Valor inicial: "Y"
