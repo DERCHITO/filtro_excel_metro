@@ -355,8 +355,19 @@ frame_independiente.grid(row=fila + 1, column=0, columnspan=num_columnas * 2, pa
 campos_independientes = ["DESCRIPCION", "DESCRIPCIÓN DE LA FALLA"]
 variables_independientes = {campo: tk.StringVar(value="") for campo in campos_independientes}
 
+# Configuración del frame_independiente para centrar los campos de descripción
+total_columnas_descripcion = 4  # Dos columnas vacías a los lados y dos para contenido
+
+# Configurar las columnas para centrar el contenido
+for col in range(total_columnas_descripcion):
+    if col == 0 or col == total_columnas_descripcion - 1:  # Columnas vacías (izquierda y derecha)
+        frame_independiente.grid_columnconfigure(col, weight=1)  # Espacio expansible
+    else:  # Columnas con contenido
+        frame_independiente.grid_columnconfigure(col, weight=0)  # Fijas
+
 # Centrando los campos de descripción
 for i, campo in enumerate(campos_independientes):
+    # Etiquetas alineadas a la derecha
     label = tk.Label(
         frame_independiente,
         text=campo,
@@ -364,8 +375,9 @@ for i, campo in enumerate(campos_independientes):
         fg="white",
         font=("Arial", 10)
     )
-    label.grid(row=i, column=0, padx=10, pady=5, sticky="e")
+    label.grid(row=i, column=1, padx=10, pady=5, sticky="e")  # Columna 1: etiquetas
 
+    # Entradas alineadas a la izquierda
     entry = tk.Entry(
         frame_independiente,
         textvariable=variables_independientes[campo],
@@ -374,7 +386,7 @@ for i, campo in enumerate(campos_independientes):
         fg="#2b2b2b",
         font=("Arial", 10)
     )
-    entry.grid(row=i, column=1, padx=10, pady=5, sticky="w")
+    entry.grid(row=i, column=2, padx=10, pady=5, sticky="w")  # Columna 2: entradas
 
 def actualizar_logica(valor):
     logica_filtro.set(valor)
