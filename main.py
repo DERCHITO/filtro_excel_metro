@@ -4,12 +4,11 @@ import pandas as pd
 import unicodedata
 from openpyxl import load_workbook
 
-# Función para normalizar texto
 def normalizar_texto(texto):
     texto = str(texto).strip()
     texto = unicodedata.normalize('NFD', texto).encode('ascii', 'ignore').decode('utf-8')
-    texto = " ".join(texto.split())
-    return texto.lower()
+    texto = texto.lower()  # Convertir a minúsculas
+    return texto
 
 # Función para cambiar al menú principal
 def cambiar_a_menu():
@@ -130,6 +129,7 @@ def archivo_anexo():
 def actualizar_seleccion(campo, valor):
     variables[campo].set(valor)
 
+# Modificar la función exportar_seleccion
 def exportar_seleccion():
     if data is None or data.empty:
         messagebox.showwarning("Advertencia", "No hay datos cargados para filtrar.")
@@ -146,6 +146,11 @@ def exportar_seleccion():
 
     # Crear una copia del DataFrame original
     datos_filtrados = data.copy()
+
+    # Normalizar las columnas relevantes
+    for columna in datos_filtrados.columns:
+        if datos_filtrados[columna].dtype == object:  # Normalizar solo columnas de tipo texto
+            datos_filtrados[columna] = datos_filtrados[columna].fillna("").apply(normalizar_texto)
 
     # Aplicar los filtros por selecciones generales
     for columna, valor in seleccion.items():
@@ -166,7 +171,7 @@ def exportar_seleccion():
                     return
             else:  # Filtro estándar para otras columnas
                 datos_filtrados = datos_filtrados[
-                    datos_filtrados[columna].astype(str).str.strip().str.lower() == valor.strip().lower()
+                    datos_filtrados[columna] == normalizar_texto(valor)
                 ]
 
     # Aplicar filtros basados en palabras clave de los campos de descripción
@@ -174,17 +179,20 @@ def exportar_seleccion():
         if columna in datos_filtrados.columns:  # Verificar que la columna exista
             if palabra_clave:
                 # Dividir las palabras clave ingresadas por el usuario en una lista
-                palabras = palabra_clave.strip().lower().split()
-                # Asegurarnos de que la columna no tenga valores nulos y esté en minúsculas
-                datos_filtrados[columna] = datos_filtrados[columna].fillna("").astype(str).str.strip().str.lower()
+                palabras = [normalizar_texto(p) for p in palabra_clave.strip().split()]
 
-                # Filtrar filas que contengan TODAS las palabras clave (lógica "Y")
-                for palabra in palabras:
-                    print(f"Filtrando por la palabra: {palabra} en la columna {columna}")
+                # Lógica de filtro: Y u O
+                if logica_filtro.get() == "Y":  # Lógica AND (todas las palabras deben coincidir)
+                    for palabra in palabras:
+                        print(f"Filtrando por la palabra (AND): {palabra} en la columna {columna}")
+                        datos_filtrados = datos_filtrados[
+                            datos_filtrados[columna].str.contains(palabra, na=False)
+                        ]
+                elif logica_filtro.get() == "O":  # Lógica OR (al menos una palabra debe coincidir)
+                    print(f"Filtrando por las palabras (OR): {palabras} en la columna {columna}")
                     datos_filtrados = datos_filtrados[
-                        datos_filtrados[columna].str.contains(palabra, na=False)
+                        datos_filtrados[columna].apply(lambda x: any(palabra in x for palabra in palabras))
                     ]
-                    print(f"Filas restantes después de filtrar por '{palabra}': {len(datos_filtrados)}")
 
     # Verificar si hay datos después de aplicar los filtros
     if datos_filtrados.empty:
@@ -225,7 +233,6 @@ def exportar_seleccion():
             messagebox.showinfo("Éxito", f"Archivo exportado correctamente en:\n{save_path}")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo ajustar el tamaño de las columnas: {e}")
-
 
 # Configuración de la ventana principal
 ventana = tk.Tk()
@@ -357,6 +364,32 @@ for i, campo in enumerate(campos_independientes):
         font=("Arial", 10)
     )
     entry.grid(row=i, column=1, padx=10, pady=5, sticky="w")
+
+def actualizar_logica(valor):
+    logica_filtro.set(valor)
+    print(f"Lógica de filtro actualizada a: {valor}")
+
+# Variable global para la lógica (Y u O)
+logica_filtro = tk.StringVar(value="Y")  # Valor inicial: "Y"
+
+# Agregar la opción de lógica al lado de los campos de descripción
+label_logica = tk.Label(
+    frame_independiente,
+    text="Lógica (Y/O)",
+    bg="#2b2b2b",
+    fg="white",
+    font=("Arial", 10)
+)
+label_logica.grid(row=len(campos_independientes), column=0, padx=10, pady=5, sticky="e")
+
+menu_logica = tk.OptionMenu(
+    frame_independiente,
+    logica_filtro,
+    "Y", "O",
+    command=actualizar_logica
+)
+menu_logica.config(width=10, bg="white", fg="#2b2b2b")
+menu_logica.grid(row=len(campos_independientes), column=1, padx=10, pady=5, sticky="w")
 
 # Botón para exportar datos seleccionados
 boton_exportar = tk.Button(
