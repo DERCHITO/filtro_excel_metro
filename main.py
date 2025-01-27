@@ -19,7 +19,7 @@ def cambiar_a_menu():
 
 # Función para cargar el archivo Excel
 def archivo_anexo():
-    global data  # Declarar la variable global
+    global data # Declarar la variable global
     # Seleccionar archivo Excel
     file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
     if not file_path:
@@ -42,7 +42,7 @@ def archivo_anexo():
             messagebox.showerror("Error", f"Columnas faltantes en el archivo: {', '.join(columnas_faltantes)}")
             return
         
-                        # Convertir la columna "Fecha" a formato datetime
+        # Convertir la columna "Fecha" a formato datetime
         if "Fecha" in data.columns:
             data["Fecha"] = pd.to_datetime(data["Fecha"], errors="coerce")  # Convertir a datetime
             data = data.dropna(subset=["Fecha"])  # Eliminar filas con fechas inválidas
@@ -60,10 +60,7 @@ def archivo_anexo():
             else:
                 menus["Fecha"].children["menu"].delete(0, "end")
                 for anio in anios_disponibles:
-                    menus["Fecha"].children["menu"].add_command(
-                        label=anio,
-                        command=lambda v=anio: actualizar_seleccion("Fecha", v)
-                    )
+                    menus["Fecha"].children["menu"].add_command(label=anio, command=lambda v=anio: actualizar_seleccion("Fecha", v))
 
     except Exception as e:
         messagebox.showerror("Error", f"Error al cargar el archivo: {e}")
@@ -138,12 +135,14 @@ def exportar_seleccion():
         messagebox.showwarning("Advertencia", "No hay datos cargados para filtrar.")
         return
 
-    # Recoger las selecciones de los campos
+    # Recoger las selecciones de los campos generales
     seleccion = {campo: variables[campo].get() for campo in variables if variables[campo].get() != "Seleccione"}
+    print("Selección general:", seleccion)
 
     # Recoger palabras clave de los campos de descripción
     palabras_clave_descripcion = {campo: variables_independientes[campo].get().strip().lower()
                                    for campo in campos_independientes if variables_independientes[campo].get().strip()}
+    print("Palabras clave de los campos de descripción:", palabras_clave_descripcion)
 
     # Crear una copia del DataFrame original
     datos_filtrados = data.copy()
@@ -172,19 +171,20 @@ def exportar_seleccion():
 
     # Aplicar filtros basados en palabras clave de los campos de descripción
     for columna, palabra_clave in palabras_clave_descripcion.items():
-        if columna in datos_filtrados.columns:  # Verificar que la columna existe
+        if columna in datos_filtrados.columns:  # Verificar que la columna exista
             if palabra_clave:
-                # Dividir las palabras clave en una lista
-                palabras = palabra_clave.split()
-                # Asegurarse de que la columna no tenga valores nulos y sea cadena
-                datos_filtrados[columna] = datos_filtrados[columna].fillna("").astype(str).str.lower()
+                # Dividir las palabras clave ingresadas por el usuario en una lista
+                palabras = palabra_clave.strip().lower().split()
+                # Asegurarnos de que la columna no tenga valores nulos y esté en minúsculas
+                datos_filtrados[columna] = datos_filtrados[columna].fillna("").astype(str).str.strip().str.lower()
 
-                # Filtrar filas que contengan todas las palabras clave
+                # Filtrar filas que contengan TODAS las palabras clave (lógica "Y")
                 for palabra in palabras:
+                    print(f"Filtrando por la palabra: {palabra} en la columna {columna}")
                     datos_filtrados = datos_filtrados[
                         datos_filtrados[columna].str.contains(palabra, na=False)
                     ]
-
+                    print(f"Filas restantes después de filtrar por '{palabra}': {len(datos_filtrados)}")
 
     # Verificar si hay datos después de aplicar los filtros
     if datos_filtrados.empty:
@@ -225,6 +225,7 @@ def exportar_seleccion():
             messagebox.showinfo("Éxito", f"Archivo exportado correctamente en:\n{save_path}")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo ajustar el tamaño de las columnas: {e}")
+
 
 # Configuración de la ventana principal
 ventana = tk.Tk()
