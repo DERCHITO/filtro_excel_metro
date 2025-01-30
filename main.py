@@ -272,7 +272,7 @@ boton_anexo.pack(pady=10)
 
 boton_nuevo = tk.Button(
     frame_menu, 
-    text="Ir a Nuevo Frame", 
+    text="Informe semanal", 
     command=frame_semanal,
     font=("arial", 10, "bold")
 )
@@ -757,9 +757,6 @@ def crear_word(df_filtrado):
                 if col in df_filtro1.columns:
                     df_filtro1[col] = pd.to_datetime(df_filtro1[col], errors='coerce').dt.date
 
-            # Ordenar las columnas según el formato deseado
-            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']]
-
             # Crear la tabla con las columnas requeridas
             columnas = ["N°", "DESCRIPCIÓN", "Equipo", "Línea", "Estación", "Sistema", "Plan Matriz", "Ejecutado", "OT"]
             num_filas = df_filtro1.shape[0]  # Número de filas de datos
@@ -1095,6 +1092,8 @@ def crear_word(df_filtrado):
 
     grafico1 = doc.add_paragraph("Gráfico N°1 – Adherencia Plan de Mantenimiento Preventivo Semana " + semanas_transcurridas() + ".")
     grafico1.alignment = 1
+    grafico1.runs[0].font.name = 'Calibri'
+    grafico1.runs[0].font.size = Pt(9.5)
 
     doc.add_page_break()
 
@@ -1104,11 +1103,9 @@ def crear_word(df_filtrado):
     plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
 
     mantenimiento3 = doc.add_paragraph("       \nA continuación, se detallan las desviaciones al plan de mantenimientos que se han presentado durante el mes en estudio.")
-    mantenimiento3.name = 'Calibri'
-    mantenimiento3.size = Pt(9.5)
-#
-#
-#
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
+
     try:
         if not df_filtrado.empty:
             # Eliminar las columnas no requeridas del DataFrame si existen
@@ -1180,132 +1177,81 @@ def crear_word(df_filtrado):
     except Exception as e:
         print(f"Error en la creación del Word: {e}")
 
-#
+    doc.add_page_break()
+
     titulo_adherencia2_3 = doc.add_heading('2.2.3 	Adherencia al Plan de Mantenimiento últimas 12 Semanas \n', 3)
     titulo_adherencia2_3.runs[0].font.name = 'Calibri'
     titulo_adherencia2_3.runs[0].font.size = Pt(10)
     titulo_adherencia2_3.runs[0].font.bold = True
     titulo_adherencia2_3.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
 
-    tabla_4 = doc.add_table(rows=6, cols=7)
+    # Crear la tabla
+    tabla_4 = doc.add_table(rows=7, cols=9)
     tabla_4.style = 'Table Grid'    
 
-    # Fusión inicial de celdas
-    tabla_4.rows[0].cells[0].merge(tabla_4.rows[0].cells[6])
-    tabla_4.rows[1].cells[5].merge(tabla_4.rows[1].cells[6])
-    tabla_4.rows[1].cells[3].merge(tabla_4.rows[1].cells[4])
-    tabla_4.rows[2].cells[3].merge(tabla_4.rows[2].cells[4])
-    tabla_4.rows[2].cells[5].merge(tabla_4.rows[2].cells[6])
-
-    tabla_4.rows[3].cells[3].merge(tabla_4.rows[3].cells[4])
-    tabla_4.rows[3].cells[5].merge(tabla_4.rows[3].cells[6])
-    tabla_4.rows[4].cells[3].merge(tabla_4.rows[4].cells[4])
-    tabla_4.rows[4].cells[5].merge(tabla_4.rows[4].cells[6])
-    # Fusión de columnas en la misma sección
-    tabla_4.rows[2].cells[6].merge(tabla_4.rows[4].cells[6])
-    tabla_4.rows[2].cells[3].merge(tabla_4.rows[4].cells[3])
-    
+    # Datos de adherencia
     adherencia_tabla = ['\nMANTENIMIENTO PREVENTIVO\n']
-    adherencia_1 = ['', '\nProgramado\n', 'Ejecutado', 'Programado Total', '','Ejecutado Total']
-    adherencia_2 = ['Categoría1 (C1)', 'numero', 'numero', 'numero', '','numero']
-    adherencia_3 = ['Categoría1 (C2)', 'numero', 'numero', 'numero', '','numero']
-    adherencia_4 = ['Categoría1 (C3)', 'numero', 'numero', 'numero', '','numero']
-    adherencia_5 = ['Cumplimiento Semana '+ semanas_transcurridas(), '', '', '', '\nporcentaje\n', '','']
+    adherencia_1 = ["\n\n", "Programado", "Ejecutado", "Programado", "Ejecutado", "Programado", "Ejecutado", "Programado Total", "Ejecutado Total"]
+    adherencia_2 = ["Categoría1 (C1)", "numero", "numero", "-", "-", "-", "-", "numero", "numero"]
+    adherencia_3 = ["Categoría2 (C2)", "-", "-", "numero", "numero", "-", "-", "", ""]
+    adherencia_4 = ["Categoría3 (C3)", "-", "-", "-", "-", "numero", "numero", "", ""]
+    adherencia_5 = ["Cumplimiento ", "", "", "", "", "", "", "\nporcentaje\n", ""]
+    adherencia_6 = ["Actividades de Noviembre no ejecutadas por responsabilidad de Metro ", "", "", "", "", "", "", "\nporcentaje\n", ""]
 
-    # Aplicar formato y contenido
+    # Función para dar formato a las celdas con estilo de letra
+    def format_cell(cell, text, font_name="Calibri", font_size=8, font_bold=False):
+        cell.text = text
+        paragraph = cell.paragraphs[0]
+        run = paragraph.runs[0]
+        run.font.name = font_name  # Cambiar la fuente
+        run.font.size = Pt(font_size)  # Cambiar el tamaño de letra
+        run.font.bold = font_bold  # Negrita
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Centrar horizontalmente
+        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+    # Aplicar formato y contenido a la primera fila
     for i, text in enumerate(adherencia_tabla):
-        format_cell(tabla_4.rows[0].cells[i], text, font_name="Calibri", font_size=9.5, font_bold=False)
+        format_cell(tabla_4.rows[0].cells[i], text, font_name="Calibri", font_size=8, font_bold=False)
 
     # Agregar datos dinámicamente con formato
-    adherencias = [adherencia_1, adherencia_2, adherencia_3, adherencia_4, adherencia_5]
+    adherencias = [adherencia_1, adherencia_2, adherencia_3, adherencia_4, adherencia_5, adherencia_6]
     for row_idx, adherencia in enumerate(adherencias, start=1):
         for col_idx, text in enumerate(adherencia):
             if text.strip():  # Agregar solo texto no vacío
-                format_cell(tabla_4.rows[row_idx].cells[col_idx], text, font_name="Calibri", font_size=9.5, font_bold=False)
+                format_cell(tabla_4.rows[row_idx].cells[col_idx], text, font_name="Calibri", font_size=8, font_bold=False)
 
-    tabla_4.rows[5].cells[0].merge(tabla_4.rows[5].cells[3])
-    tabla_4.rows[5].cells[4].merge(tabla_4.rows[5].cells[6])
+    # Fusión de celdas
+    tabla_4.rows[2].cells[8].merge(tabla_4.rows[4].cells[8])
+    tabla_4.rows[2].cells[7].merge(tabla_4.rows[4].cells[7])
 
-    doc.add_page_break()
+    # Fusión de celdas adicionales
+    for i in range(5, 7):
+        tabla_4.rows[i].cells[0].merge(tabla_4.rows[i].cells[5])
+        tabla_4.rows[i].cells[6].merge(tabla_4.rows[i].cells[8])
+    tabla_4.rows[0].cells[0].merge(tabla_4.rows[0].cells[8])
 
     tabla_adherencia = doc.add_paragraph('Tabla N°6 – Resumen Mantenimientos Preventivos Semana ' + semanas_transcurridas())
     tabla_adherencia.runs[0].font.name = 'Calibri'
     tabla_adherencia.runs[0].font.size = Pt(9.5)
     tabla_adherencia.runs[0].font.bold = False
     tabla_adherencia.alignment = 1
-    tabla_adherencia.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
 
-    # Datos
-    categorias = ["RMS", "TETRA", "RBA", "CCTV", "SIP", "SAP", "TEL", "CRO", "SCA", "GRA", "MR SIP/SAP"]
-    programada = [12, 12, 12, 0, 0, 0, 0, 0, 0, 0, 12]
-    ejecutada = [12, 12, 12, 0, 0, 0, 0, 0, 0, 0, 12]
-
-    # Crear el gráfico
-    x = range(len(categorias))  # Índices para las barras
-    plt.bar(x, programada, width=0.4, label='PROGRAMADA', color='blue', align='center')
-    plt.bar(x, ejecutada, width=0.4, label='EJECUTADA', color='orange', align='edge')
-
-    # Personalización del gráfico
-    plt.title("ADHERENCIA AL PLAN DE MANTENIMIENTO")
-    plt.ylabel("ORDENES DE TRABAJO\nMANTENIMIENTO PREVENTIVO")
-    plt.xticks(x, categorias, rotation=45)
-    plt.legend()
-
-    # Guardar el gráfico como una imagen temporal
-    grafico2 = "grafico_temporal.png"
-    plt.tight_layout()
-    plt.savefig(grafico2)
-    plt.close()
-
-    # Cambiar el estilo de fuente predeterminado del documento
-    style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Calibri'
-    font.size = Pt(9.5)
-
-    # Agregar el gráfico al documento
-    imagen_parrafo = doc.add_paragraph()
-    imagen_parrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    imagen_parrafo.add_run().add_picture(grafico2, width=Inches(4))
-    graf = doc.add_paragraph("Gráfico N°2 – Adherencia Plan de Mantenimiento Preventivo Semana " + semanas_transcurridas() + ".")
-    graf.name = 'Calibri'
-    graf.size = Pt(9.5)
-    graf.alignment = 1
-
-    # Crear la tabla con los datos
-    tabla_grafico1 = doc.add_table(rows=3, cols=len(categorias) + 1)
-    tabla_grafico1.style = 'Table Grid'
-
-    # Encabezado
-    format_cell(tabla_grafico1.cell(0, 0), "Categoría", font_name="Calibri", font_size=9.5, font_bold =False)
-    for i, categoria in enumerate(categorias):
-        format_cell(tabla_grafico1.cell(0, i + 1), categoria)
-
-    # Fila PROGRAMADA
-    format_cell(tabla_grafico1.cell(1, 0), "PROGRAMADA", font_name="Calibri", font_size=9.5, font_bold =False)
-    for i, valor in enumerate(programada):
-        format_cell(tabla_grafico1.cell(1, i + 1), str(valor))
-
-    # Fila EJECUTADA
-    format_cell(tabla_grafico1.cell(2, 0), "EJECUTADA", font_name="Calibri", font_size=9.5, font_bold =False)
-    for i, valor in enumerate(ejecutada):
-        format_cell(tabla_grafico1.cell(2, i + 1), str(valor))
-
-    graf = doc.add_paragraph("Tabla N°6 – Adherencia Plan de Mantenimiento Preventivo Semana " + semanas_transcurridas() + ".")
-    graf.name = 'Calibri'
-    graf.size = Pt(9.5)
-    graf.alignment = 1
+    tabla_adherencia = doc.add_paragraph("Gráfico N°2 – Adherencia Plan de Mantenimiento Preventivo Semana " + semanas_transcurridas() + ".")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
 
     doc.add_page_break()
 
     plan_mantenimiento = doc.add_heading("2.2.4	Proyección Mantenimiento Próximas 12 Semanas", 3)
-    plan_mantenimiento.name = 'Calibri'
-    plan_mantenimiento.size = Pt(10)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
     plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
 
-    mantenimiento3 = doc.add_paragraph("       \nA continuación, se declara proyección del Mantenimiento Preventivo para las próximas 12 semanas.")
-    mantenimiento3.name = 'Calibri'
-    mantenimiento3.size = Pt(9.5)
+    mantenimiento3 = doc.add_paragraph("\n      A continuación, se declara proyección del Mantenimiento Preventivo para las próximas 12 semanas.")
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
 
 
 
