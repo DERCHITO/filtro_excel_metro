@@ -615,7 +615,7 @@ def crear_word(df_filtrado):
     except Exception as e:
         print(f"Error al cargar la imagen derecha: {e}")
     
-    doc.add_paragraph("\n" * 9)
+    doc.add_paragraph("\n" * 8)
     # Añadir una tabla con el número de filas y columnas necesarias
     tabla_portada = doc.add_table(rows=4, cols=7)
     tabla_portada.style = 'Table Grid'
@@ -1253,9 +1253,15 @@ def crear_word(df_filtrado):
     mantenimiento3.runs[0].font.name = 'Calibri'
     mantenimiento3.runs[0].font.size = Pt(9.5)
 
-
-
     doc.add_page_break()
+
+    # Crear la tabla
+    tabla_5 = doc.add_table(rows=7, cols=9)
+    tabla_5.style = 'Table Grid'  
+
+    
+
+
 
 
 ################################# 
