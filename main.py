@@ -1284,24 +1284,23 @@ def crear_word(df_filtrado, df_tabla12prox):
     df_tabla12prox.columns = df_tabla12prox.columns.str.strip()  # Limpiar espacios en columnas
     df_tabla12prox = df_tabla12prox.applymap(lambda x: x.strip() if isinstance(x, str) else x)  # Limpiar celdas de texto
     df_tabla12prox.replace(['nan', 'None', None], '', inplace=True)  # Reemplazar valores nulos con vacío
-    
+
     # 🔹 Convertir la columna `N°` a enteros si existe
     if 'N°' in df_tabla12prox.columns:
         df_tabla12prox['N°'] = pd.to_numeric(df_tabla12prox['N°'], errors='coerce').fillna(0).astype(int)
-    
+
     # 🔹 Eliminar filas completamente vacías
     df_tabla12prox = df_tabla12prox.dropna(how='all').reset_index(drop=True)
-    
+
     # 🔹 Verificar el número correcto de filas y columnas
     num_filas, num_columnas = df_tabla12prox.shape
-    print(f"Filas después de limpieza: {num_filas}, Columnas: {num_columnas}")  # Depuración
-    
+
     # 🔹 Crear la tabla en Word
     if num_filas > 0 and num_columnas > 0:  # Asegurarse de que hay datos para insertar
         # Crear la tabla con el número exacto de filas
         tabla = doc.add_table(rows=num_filas + 2, cols=num_columnas)  # +2 para título y encabezado
         tabla.style = 'Table Grid'
-    
+
         # 🔹 Fusionar la primera fila y colocar el título centrado
         titulo_celda = tabla.cell(0, 0)
         titulo_celda.merge(tabla.cell(0, num_columnas - 1))  # Fusionar toda la fila 0
@@ -1312,7 +1311,7 @@ def crear_word(df_filtrado, df_tabla12prox):
         titulo_run.font.name = 'Calibri'
         titulo_run.font.size = Pt(10)
         titulo_run.bold = True
-    
+
         # 🔹 Insertar encabezados en la fila 1
         for j, column_name in enumerate(df_tabla12prox.columns):
             cell = tabla.cell(1, j)
@@ -1323,7 +1322,7 @@ def crear_word(df_filtrado, df_tabla12prox):
             run.font.size = Pt(8)
             run.bold = True
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
         # 🔹 Insertar datos en la tabla desde la fila 2 en adelante
         for i, row in enumerate(df_tabla12prox.itertuples(index=False), start=2):
             for j, value in enumerate(row):
@@ -1334,7 +1333,7 @@ def crear_word(df_filtrado, df_tabla12prox):
                 run.font.name = 'Calibri'
                 run.font.size = Pt(8)
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
         # 🔹 Fusionar la última fila (columna 0 y 1) con el texto "TOTAL"
         ultima_fila = num_filas + 1  # Índice de la última fila
         cell_total = tabla.cell(ultima_fila, 0)
@@ -1347,11 +1346,56 @@ def crear_word(df_filtrado, df_tabla12prox):
         run.font.size = Pt(8)
         run.bold = True
 
+        tabla_adherencia = doc.add_paragraph('Tabla N°6 – Proyección Mantenimientos Preventivos próximas 12 semanas.')
+        tabla_adherencia.runs[0].font.name = 'Calibri'
+        tabla_adherencia.runs[0].font.size = Pt(9.5)
+        tabla_adherencia.runs[0].font.bold = False
+        tabla_adherencia.alignment = 1
 
     doc.add_page_break()
 
+    plan_mantenimiento = doc.add_heading("2.3 	Actividades fuera del Plan de Mantenimiento", 2)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
 
+    mantenimiento3 = doc.add_paragraph("\n      A continuación, se presentan las actividades fuera del plan de Mantenimiento.")
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
 
+    # Crear la tabla con encabezado principal y columnas
+    num_columnas = 7  # Número de columnas según la imagen
+    tabla8 = doc.add_table(rows=2, cols=num_columnas)
+    tabla8.style = 'Table Grid'
+
+    # Contenido de las celdas
+    encabezado8 = ['\nActividades fuera del plan de Mantenimiento\n']
+    sub_encabezado8 = ['N°', 'Descripción', 'Línea', 'Estación', 'Semana', 'Fecha', 'Observaciones']
+
+    # Función para dar formato a las celdas con estilo de letra
+    def format_cell(cell, text, font_name="Calibri", font_size=9.5, font_bold= False):
+        cell.text = text
+        paragraph = cell.paragraphs[0]
+        run = paragraph.runs[0]
+        run.font.name = font_name  # Cambiar la fuente
+        run.font.size = Pt(font_size)  # Cambiar el tamaño de letra
+        run.font.bold = font_bold  # Negrita
+        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centrar horizontalmente
+        cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+    # Añadir datos y aplicar estilo a cada celda
+    for i, text in enumerate(encabezado8):
+        format_cell(tabla8.rows[0].cells[i], text, font_name="Calibri", font_size=8, font_bold=True)
+    for i, text in enumerate(sub_encabezado8):
+        format_cell(tabla8.rows[1].cells[i], text, font_name="Calibri", font_size=8, font_bold =False)
+
+    tabla8.rows[0].cells[0].merge(tabla8.rows[0].cells[6])
+
+    tabla_adherencia = doc.add_paragraph('Tabla N°8 – Actividades fuera del Plan de Mantenimiento Semana ' + semanas_transcurridas() + ".")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
 
 ################################# 
         # Guardar el documento con el nombre especificado
