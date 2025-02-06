@@ -1335,7 +1335,17 @@ def crear_word(df_filtrado, df_tabla12prox):
                 run.font.size = Pt(8)
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    
+        # 🔹 Fusionar la última fila (columna 0 y 1) con el texto "TOTAL"
+        ultima_fila = num_filas + 1  # Índice de la última fila
+        cell_total = tabla.cell(ultima_fila, 0)
+        cell_total.merge(tabla.cell(ultima_fila, 1))  # Fusionar columnas 0 y 1
+        cell_total.text = "TOTAL"
+        paragraph = cell_total.paragraphs[0]
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Centrar el texto
+        run = paragraph.runs[0]
+        run.font.name = 'Calibri'
+        run.font.size = Pt(8)
+        run.bold = True
 
 
     doc.add_page_break()
