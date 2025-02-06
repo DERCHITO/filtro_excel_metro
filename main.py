@@ -509,19 +509,46 @@ def abrir_archivo_excel():
                     df_filtrado = df_filtrado[["Descripcion OT", "Equipo", "DEP", "EST", "SIST", "F.LIBERACIÓN", "FP", "Número de OT", "FE", "CAT"]]
                     df_filtrado["FE"] = df_filtrado["FE"].dt.strftime('%Y-%m-%d')
 
-                    crear_word(df_filtrado)
-
                 except ValueError:
                     messagebox.showerror("Error", "Error al procesar las fechas seleccionadas.")
+                if ruta_archivo:
+                    # Leer el archivo omitiendo las primeras 5 filas
+                    df_tabla12prox = pd.read_excel(ruta_archivo, sheet_name="INFORME-PRÓXIMAS 12SEM", skiprows=6)
 
+                    # Eliminar las primeras 11 columnas manualmente
+                    df_tabla12prox = df_tabla12prox.iloc[:, 11:].reset_index(drop=True)
+
+                    # Buscar la fila que contiene el título dentro de la primera columna disponible
+                    columna_titulo = df_tabla12prox.columns[0]  # Tomar la primera columna después de la eliminación
+                    fila_inicio = df_tabla12prox[df_tabla12prox[columna_titulo] == "Proyección de actividades según su categoría"].index
+
+                    if not fila_inicio.empty:
+                        fila_inicio = fila_inicio[0] + 1
+                        df_actividades = df_tabla12prox.iloc[fila_inicio:].reset_index(drop=True)
+
+                        # Eliminar columnas "Unnamed" antes de asignar encabezados
+                        df_actividades.dropna(axis=1, how='all', inplace=True)  # Elimina columnas completamente vacías
+                        df_actividades.columns = df_actividades.iloc[0].fillna("")  # Reemplazar NaN con cadenas vacías
+                        df_actividades = df_actividades[1:].reset_index(drop=True)  # Eliminar la fila usada como encabezado
+
+                        # Filtrar solo las columnas con nombres válidos (descartando 'Unnamed' o vacías)
+                        df_actividades = df_actividades.loc[:, ~df_actividades.columns.astype(str).str.contains("Unnamed|^$", regex=True)]
+
+                    else:
+                        df_actividades = None
+
+
+
+                    crear_word(df_filtrado,df_tabla12prox)
             # Botón para aplicar el filtro
             boton_aplicar = tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro)
             boton_aplicar.pack(pady=10)
+            
 
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo abrir el archivo Excel:\n{e}")
 
-def crear_word(df_filtrado):
+def crear_word(df_filtrado, df_tabla12prox):
     # Crear un nuevo documento de Word
     doc = Document()
 
@@ -1253,13 +1280,65 @@ def crear_word(df_filtrado):
     mantenimiento3.runs[0].font.name = 'Calibri'
     mantenimiento3.runs[0].font.size = Pt(9.5)
 
-    doc.add_page_break()
-
-    # Crear la tabla
-    tabla_5 = doc.add_table(rows=7, cols=9)
-    tabla_5.style = 'Table Grid'  
-
+    # 🔹 Limpiar los datos del DataFrame
+    df_tabla12prox.columns = df_tabla12prox.columns.str.strip()  # Limpiar espacios en columnas
+    df_tabla12prox = df_tabla12prox.applymap(lambda x: x.strip() if isinstance(x, str) else x)  # Limpiar celdas de texto
+    df_tabla12prox.replace(['nan', 'None', None], '', inplace=True)  # Reemplazar valores nulos con vacío
     
+    # 🔹 Convertir la columna `N°` a enteros si existe
+    if 'N°' in df_tabla12prox.columns:
+        df_tabla12prox['N°'] = pd.to_numeric(df_tabla12prox['N°'], errors='coerce').fillna(0).astype(int)
+    
+    # 🔹 Eliminar filas completamente vacías
+    df_tabla12prox = df_tabla12prox.dropna(how='all').reset_index(drop=True)
+    
+    # 🔹 Verificar el número correcto de filas y columnas
+    num_filas, num_columnas = df_tabla12prox.shape
+    print(f"Filas después de limpieza: {num_filas}, Columnas: {num_columnas}")  # Depuración
+    
+    # 🔹 Crear la tabla en Word
+    if num_filas > 0 and num_columnas > 0:  # Asegurarse de que hay datos para insertar
+        # Crear la tabla con el número exacto de filas
+        tabla = doc.add_table(rows=num_filas + 2, cols=num_columnas)  # +2 para título y encabezado
+        tabla.style = 'Table Grid'
+    
+        # 🔹 Fusionar la primera fila y colocar el título centrado
+        titulo_celda = tabla.cell(0, 0)
+        titulo_celda.merge(tabla.cell(0, num_columnas - 1))  # Fusionar toda la fila 0
+        titulo_celda.text = "Proyección de actividades según su categoría"
+        titulo_paragraph = titulo_celda.paragraphs[0]
+        titulo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        titulo_run = titulo_paragraph.runs[0]
+        titulo_run.font.name = 'Calibri'
+        titulo_run.font.size = Pt(10)
+        titulo_run.bold = True
+    
+        # 🔹 Insertar encabezados en la fila 1
+        for j, column_name in enumerate(df_tabla12prox.columns):
+            cell = tabla.cell(1, j)
+            cell.text = str(column_name)
+            paragraph = cell.paragraphs[0]
+            run = paragraph.runs[0]
+            run.font.name = 'Calibri'
+            run.font.size = Pt(8)
+            run.bold = True
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+        # 🔹 Insertar datos en la tabla desde la fila 2 en adelante
+        for i, row in enumerate(df_tabla12prox.itertuples(index=False), start=2):
+            for j, value in enumerate(row):
+                cell = tabla.cell(i, j)
+                cell.text = str(value) if pd.notna(value) else ""
+                paragraph = cell.paragraphs[0]
+                run = paragraph.runs[0]
+                run.font.name = 'Calibri'
+                run.font.size = Pt(8)
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    
+
+
+    doc.add_page_break()
 
 
 
