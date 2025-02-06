@@ -1282,7 +1282,9 @@ def crear_word(df_filtrado, df_tabla12prox):
 
     # 🔹 Limpiar los datos del DataFrame
     df_tabla12prox.columns = df_tabla12prox.columns.str.strip()  # Limpiar espacios en columnas
-    df_tabla12prox = df_tabla12prox.applymap(lambda x: x.strip() if isinstance(x, str) else x)  # Limpiar celdas de texto
+    # Limpiar espacios en blanco únicamente en las columnas que son de tipo texto (str)
+    df_tabla12prox.loc[:, df_tabla12prox.select_dtypes(include=["object"]).columns] = (
+        df_tabla12prox.select_dtypes(include=["object"]).apply(lambda col: col.str.strip()))
     df_tabla12prox.replace(['nan', 'None', None], '', inplace=True)  # Reemplazar valores nulos con vacío
 
     # 🔹 Convertir la columna `N°` a enteros si existe
@@ -1396,6 +1398,27 @@ def crear_word(df_filtrado, df_tabla12prox):
     tabla_adherencia.runs[0].font.size = Pt(9.5)
     tabla_adherencia.runs[0].font.bold = False
     tabla_adherencia.alignment = 1
+
+    doc.add_page_break()
+
+    plan_mantenimiento = doc.add_heading("3.    Mantenimiento Correctivo.", 1)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
+
+    plan_mantenimiento = doc.add_heading("3.1	Fallas Operacionales Semana "+ semanas_transcurridas() + ".", 2)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
+
+    plan_mantenimiento = doc.add_heading("3.2	Descripción Fallas Operacionales.", 2)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
+
+    mantenimiento3 = doc.add_paragraph("\n      A continuación, se detallan las averías presentadas durante la Semana " + semanas_transcurridas() + " del año "  + str(datetime.now().year) + ".")
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
 
 ################################# 
         # Guardar el documento con el nombre especificado
