@@ -73,6 +73,8 @@ def archivo_anexo():
             # Extraer los años únicos
             anios_disponibles = data["Fecha"].dt.year.dropna().astype(int).unique().tolist()
             anios_disponibles.sort()
+            anios_disponibles.insert(0, "TODOS")  # Agregar opción "TODOS"
+
 
             # Actualizar el menú desplegable para los años
             if "Fecha" not in menus:
@@ -101,6 +103,7 @@ def archivo_anexo():
         data["Semana"] = data["Fecha"].dt.isocalendar().week
         semanas_disponibles = data["Semana"].dropna().astype(int).unique().tolist()
         semanas_disponibles.sort()
+        semanas_disponibles.insert(0, "TODOS")  # Agregar opción "TODOS"
 
         if "Semana" not in menus:
             label_semana = tk.Label(frame_campos, text="Semana", bg="#2b2b2b", fg="white", font=("arial", 10))
@@ -128,6 +131,8 @@ def archivo_anexo():
             normalizados = {normalizar_texto(valor): valor for valor in valores_originales}
             valores_unicos = list(normalizados.values())
             valores_unicos.sort()
+            valores_unicos.insert(0, "TODOS")  # Agregar opción "TODOS"
+            
 
             if columna not in variables:
                 variables[columna] = tk.StringVar(value="Seleccione")
@@ -173,8 +178,8 @@ def exportar_seleccion():
 
     # Aplicar los filtros por selecciones generales
     for columna, valor in seleccion.items():
-        if columna in datos_filtrados.columns:
-            if columna == "Fecha":  # Filtro especial para el año
+        if columna in datos_filtrados.columns and valor != "TODOS":
+            if columna == "Fecha" and valor != "TODOS":  # Filtro especial para el año
                 try:
                     valor = int(valor)  # Convertir el año seleccionado a entero
                     fecha_inicio = f"{valor}-01-01"  # Inicio del año
