@@ -433,8 +433,25 @@ for i, campo in enumerate(campos_independientes):
 def actualizar_logica(valor):
     logica_filtro.set(valor)
 
+def abrir_averias():
+    try:
+        # Seleccionar otro archivo Excel
+        ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
+        if not ruta_archivo:
+            return  # Si el usuario cancela, no hacer nada
 
-def abrir_archivo_excel():
+        # Leer el archivo y mostrar un mensaje de confirmación
+        df_otro = pd.read_excel(ruta_archivo)
+        messagebox.showinfo("Éxito", f"Se ha leído correctamente el archivo:\n{ruta_archivo}")
+
+        # Aquí puedes agregar más procesamiento del archivo si es necesario
+        print(df_otro.head())  # Muestra las primeras filas en la consola para depuración
+
+    except Exception as e:
+        messagebox.showerror("Error", f"No se pudo leer el archivo:\n{e}")
+
+
+def abrir_programacion():
     try:
         # Abrir el archivo Excel
         ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
@@ -1489,13 +1506,26 @@ frame_semanal = tk.Frame(ventana, bg="#2b2b2b")
 label_semanal = tk.Label(frame_semanal, text="Informe Semanal", bg="#2b2b2b", fg="white", font=("arial", 20))
 label_semanal.pack(pady=20)
 
+# Crear un frame para organizar los botones horizontalmente
+frame_botones = tk.Frame(frame_semanal, bg="#2b2b2b")
+frame_botones.pack(pady=10)
+
 # Botón para abrir archivo Excel
-boton_abrir_excel = tk.Button(
-    frame_semanal, text="Abrir Archivo Excel",
-    command=abrir_archivo_excel,
+boton_abrir_programacion = tk.Button(
+    frame_botones, text="Abrir Archivo Programacion",
+    command=abrir_programacion,
     font=("arial", 10)
 )
-boton_abrir_excel.pack(pady=10)
+boton_abrir_programacion.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+# Nuevo botón para leer otro archivo
+boton_abrir_averias = tk.Button(
+    frame_botones,
+    text="Abrir Archivo Averias",
+    command=abrir_averias, 
+    font=("arial", 10)
+)
+boton_abrir_averias.grid(row=0, column=1, padx=10, pady=5, sticky="w")  # Se posiciona en la segunda columna
 
 # Aquí se agrega el menú desplegable al frame_semanal
 opciones = ["A", "B", "0"]
@@ -1542,12 +1572,14 @@ boton_volver.bind("<Enter>", on_enter)
 boton_volver.bind("<Leave>", on_leave)
 
 # Botones del frame_semanal
-boton_abrir_excel.bind("<Enter>", on_enter)
-boton_abrir_excel.bind("<Leave>", on_leave)
+boton_abrir_programacion.bind("<Enter>", on_enter)
+boton_abrir_programacion.bind("<Leave>", on_leave)
 
 boton_volver_nuevo.bind("<Enter>", on_enter)
 boton_volver_nuevo.bind("<Leave>", on_leave)
 
+boton_abrir_averias.bind("<Enter>", on_enter)
+boton_abrir_averias.bind("<Leave>", on_leave)
 
 # Iniciar la aplicación
 ventana.mainloop()
