@@ -21,8 +21,9 @@ def normalizar_texto(texto):
 
 # Función para cambiar al menú principal
 def cambiar_a_menu():
-    for frame in [frame_anexo]:
-        frame.pack_forget()
+    if frame in frame_anexo:
+        for frame in [frame_anexo]:
+            frame.pack_forget()    
     frame_menu.pack(fill="both", expand=True)
 
 def frame_semanal():
@@ -433,26 +434,50 @@ for i, campo in enumerate(campos_independientes):
 def actualizar_logica(valor):
     logica_filtro.set(valor)
 
+from difflib import get_close_matches
+
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import pandas as pd
+
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import pandas as pd
+
 def abrir_averias():
     try:
-        # Seleccionar otro archivo Excel
+        # Seleccionar archivo Excel
         ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
         if not ruta_archivo:
             return  # Si el usuario cancela, no hacer nada
 
-        # Leer el archivo y mostrar un mensaje de confirmación
-        df_otro = pd.read_excel(ruta_archivo)
-        messagebox.showinfo("Éxito", f"Se ha leído correctamente el archivo:\n{ruta_archivo}")
+        # Leer el archivo desde la fila 5 (omitimos las primeras 4 filas)
+        df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4)
 
-        # Aquí puedes agregar más procesamiento del archivo si es necesario
-        print(df_otro.head())  # Muestra las primeras filas en la consola para depuración
+        # Definir las columnas necesarias
+        columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
+
+        # Verificar si todas las columnas necesarias están presentes
+        columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
+        if columnas_faltantes:
+            messagebox.showerror(
+                "Error",
+                f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}"
+            )
+            return
+
+        # Filtrar las columnas necesarias
+        tabla_averias = df_otro[columnas_necesarias]
+
+        messagebox.showinfo("Éxito", "El archivo se leyó correctamente.")
+        return tabla_averias
 
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo leer el archivo:\n{e}")
 
-
 def abrir_programacion():
     try:
+        global programacion_cargada
         # Abrir el archivo Excel
         ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
         if ruta_archivo:
@@ -559,6 +584,9 @@ def abrir_programacion():
                     else:
                         df_actividades = None
 
+                    # Si todo está correcto, marcar que la programación ha sido cargada
+                    programacion_cargada = True
+                    messagebox.showinfo("Éxito", "Programación cargada correctamente.")
 
 
                     crear_word(df_filtrado,df_tabla12prox)
@@ -1442,6 +1470,50 @@ def crear_word(df_filtrado, df_tabla12prox):
     mantenimiento3.runs[0].font.name = 'Calibri'
     mantenimiento3.runs[0].font.size = Pt(9.5)
 
+    averias = abrir_averias()
+    
+# Definir los encabezados de la tabla
+    columnas = ["N°", "LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
+                "ACTIVO", "CAT", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
+    
+    num_filas = averias.shape[0]  # Número de filas de datos
+    num_columnas = len(columnas)  # Número de columnas predefinidas
+    # Crear la tabla con encabezados y filas de datos
+    tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
+    tabla.style = 'Table Grid'
+    # Agregar encabezados a la tabla
+    for j, column_name in enumerate(columnas):
+        cell = tabla.cell(0, j)
+        cell.text = column_name
+        paragraph = cell.paragraphs[0]
+        run = paragraph.runs[0]
+        run.font.name = 'Calibri'
+        run.font.size = Pt(6)
+        run.bold = True
+        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    # Agregar los datos a la tabla
+    for i, row in enumerate(averias.itertuples(index=False), start=1):
+        # Agregar numeración en la primera columna
+        cell = tabla.cell(i, 0)
+        cell.text = str(i)
+        paragraph = cell.paragraphs[0]
+        run = paragraph.runs[0]
+        run.font.name = 'Calibri'
+        run.font.size = Pt(6)
+        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        # Agregar el resto de los datos
+        for j, value in enumerate(row, start=1):
+            cell = tabla.cell(i, j)
+            cell.text = str(value) if value is not None else ""
+            paragraph = cell.paragraphs[0]
+            run = paragraph.runs[0]
+            run.font.name = 'Calibri'
+            run.font.size = Pt(6)
+            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    # Centrar texto en todas las celdas
+    for row in tabla.rows:
+        for cell in row.cells:
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
 ################################# 
         # Guardar el documento con el nombre especificado
     doc.save("prueba.docx")
@@ -1492,17 +1564,10 @@ boton_exportar = tk.Button(
 )
 boton_exportar.grid(row=5, column=0, pady=10, sticky="n")
 
-# Botón para volver al menú principal
-boton_volver = tk.Button(
-    frame_anexo,
-    text="← Volver al menú",
-    command=cambiar_a_menu,
-    font=("arial", 10, "bold")
-)
-boton_volver.grid(row=6, column=0, pady=20, sticky="s")
-
 # Crear el frame_semanal (nuevo frame)
 frame_semanal = tk.Frame(ventana, bg="#2b2b2b")
+frame_menu.pack(fill="both", expand=True)
+
 label_semanal = tk.Label(frame_semanal, text="Informe Semanal", bg="#2b2b2b", fg="white", font=("arial", 20))
 label_semanal.pack(pady=20)
 
@@ -1516,7 +1581,7 @@ boton_abrir_programacion = tk.Button(
     command=abrir_programacion,
     font=("arial", 10)
 )
-boton_abrir_programacion.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+boton_abrir_programacion.pack(side="left", padx=10, pady=5)
 
 # Nuevo botón para leer otro archivo
 boton_abrir_averias = tk.Button(
@@ -1525,7 +1590,7 @@ boton_abrir_averias = tk.Button(
     command=abrir_averias, 
     font=("arial", 10)
 )
-boton_abrir_averias.grid(row=0, column=1, padx=10, pady=5, sticky="w")  # Se posiciona en la segunda columna
+boton_abrir_averias.pack(side="left", padx=10, pady=5)
 
 # Aquí se agrega el menú desplegable al frame_semanal
 opciones = ["A", "B", "0"]
@@ -1544,6 +1609,19 @@ menu_opciones.config(
 menu_opciones["menu"].config(bg="#1e1e1e", fg="white")  # Estilo del menú desplegable
 menu_opciones.pack(pady=10)
 
+# Botón para exportar datos seleccionados
+boton_exportar = tk.Button(
+    frame_semanal,
+    text="Exportar Datos Seleccionados",
+    command=exportar_seleccion,
+    font=("arial", 10, "bold"),
+    activebackground="#4c70ba",
+    activeforeground="white",
+    bd=2,
+    relief="raised"
+)
+boton_exportar.pack(pady=10)
+
 # Botón para volver al menú principal
 boton_volver_nuevo = tk.Button(
     frame_semanal, text="← Volver al Menú",
@@ -1551,8 +1629,6 @@ boton_volver_nuevo = tk.Button(
     font=("arial", 10)
 )
 boton_volver_nuevo.pack(pady=10)
-# Mostrar el frame principal
-frame_menu.pack(fill="both", expand=True)
 
 # Botones del frame_menu
 boton_anexo.bind("<Enter>", on_enter)
@@ -1568,8 +1644,8 @@ boton_insertar.bind("<Leave>", on_leave)
 boton_exportar.bind("<Enter>", on_enter)
 boton_exportar.bind("<Leave>", on_leave)
 
-boton_volver.bind("<Enter>", on_enter)
-boton_volver.bind("<Leave>", on_leave)
+boton_volver_nuevo.bind("<Enter>", on_enter)
+boton_volver_nuevo.bind("<Leave>", on_leave)
 
 # Botones del frame_semanal
 boton_abrir_programacion.bind("<Enter>", on_enter)
