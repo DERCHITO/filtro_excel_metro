@@ -440,7 +440,7 @@ df_filtrado = None
 df_tabla12prox = None
 
 def abrir_averias():
-    global tabla_averias  
+    global df_averias  
     try:
         ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
         if not ruta_archivo:
@@ -455,12 +455,71 @@ def abrir_averias():
             messagebox.showerror("Error", f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}")
             return
 
-        tabla_averias = df_otro[columnas_necesarias]
+        # Convertir la columna de fecha a formato datetime
+        df_otro["FECHA HORA INFORME"] = pd.to_datetime(df_otro["FECHA HORA INFORME"], errors="coerce")
 
-        messagebox.showinfo("Éxito", "El archivo se leyó correctamente.")
+        if df_otro["FECHA HORA INFORME"].isnull().all():
+            messagebox.showerror("Error", "La columna 'FECHA HORA INFORME' no contiene fechas válidas.")
+            return
+
+        # Obtener la fecha mínima y máxima del DataFrame
+        fecha_minima = df_otro["FECHA HORA INFORME"].min()
+        fecha_maxima = df_otro["FECHA HORA INFORME"].max()
+
+        # Crear una ventana para seleccionar el rango de fechas
+        ventana_fechas = tk.Toplevel()
+        ventana_fechas.title("Filtrar por Fecha de Informe")
+        ventana_fechas.geometry("800x700")
+
+        tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
+        calendario_inicio = Calendar(
+            ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
+            mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
+            maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
+        )
+        calendario_inicio.pack(pady=10)
+
+        tk.Label(ventana_fechas, text="Fecha de fin:").pack(pady=5)
+        calendario_fin = Calendar(
+            ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
+            mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
+            maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
+        )
+        calendario_fin.pack(pady=10)
+
+        def aplicar_filtro():
+            global df_averias  
+            ventana_fechas.destroy()
+            try:
+                fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
+                fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d")
+
+                if fecha_inicio > fecha_fin:
+                    messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
+                    return
+
+                # Filtrar los datos en base a la fecha seleccionada
+                df_filtrado = df_otro[(df_otro["FECHA HORA INFORME"] >= fecha_inicio) & (df_otro["FECHA HORA INFORME"] <= fecha_fin)]
+
+                if df_filtrado.empty:
+                    messagebox.showinfo("Sin datos", "No se encontraron averías en el rango de fechas seleccionado.")
+                    return
+
+                # Filtrar solo las columnas necesarias
+                df_averias = df_filtrado[columnas_necesarias]
+
+                messagebox.showinfo("Éxito", "Los datos se han filtrado correctamente.")
+
+            except ValueError:
+                messagebox.showerror("Error", "Error al procesar las fechas seleccionadas.")
+
+        # Botón para aplicar el filtro
+        boton_aplicar = tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro)
+        boton_aplicar.pack(pady=10)
 
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo leer el archivo:\n{e}")
+
 
 def abrir_programacion():
     global df_filtrado, df_tabla12prox  
@@ -1430,55 +1489,101 @@ def crear_word():
     mantenimiento3.runs[0].font.name = 'Calibri'
     mantenimiento3.runs[0].font.size = Pt(9.5)
 
-    # Definir los encabezados de la tabla
-    columnas = ["N°", "LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
-                "ACTIVO", "CAT", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
-
-    # Verificar que la variable df_averias tiene datos antes de crear la tabla
-    if df_averias is not None and not df_averias.empty:
-        num_filas = df_averias.shape[0]  # Número de filas de datos
-        num_columnas = len(columnas)  # Número de columnas predefinidas
-
-        # Crear la tabla con encabezados y filas de datos
-        tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
-        tabla.style = 'Table Grid'
-
-        # Agregar encabezados a la tabla
-        for j, column_name in enumerate(columnas):
-            cell = tabla.cell(0, j)
-            cell.text = column_name
-            paragraph = cell.paragraphs[0]
-            run = paragraph.runs[0]
-            run.font.name = 'Calibri'
-            run.font.size = Pt(8)
-            run.bold = True
-            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-        # Agregar los datos a la tabla
-        for i, row in enumerate(df_averias.itertuples(index=False), start=1):
-            # Agregar numeración en la primera columna
-            cell = tabla.cell(i, 0)
-            cell.text = str(i)
-            paragraph = cell.paragraphs[0]
-            run = paragraph.runs[0]
-            run.font.name = 'Calibri'
-            run.font.size = Pt(8)
-            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-            # Agregar el resto de los datos
-            for j, value in enumerate(row, start=1):
-                cell = tabla.cell(i, j)
-                cell.text = str(value) if pd.notna(value) else ""
+    try:
+        if not df_averias.empty:
+            # Definir las columnas requeridas
+            columnas_requeridas = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
+                                   "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
+            # Filtrar solo las columnas necesarias
+            df_filtro2 = df_averias[columnas_requeridas].copy()
+    
+            # Formatear la columna 'FECHA HORA INFORME' para que solo contenga la fecha
+            if 'FECHA HORA INFORME' in df_filtro2.columns:
+                df_filtro2['FECHA HORA INFORME'] = pd.to_datetime(df_filtro2['FECHA HORA INFORME'], errors='coerce').dt.date
+    
+            # Crear la tabla en el documento de Word
+            num_filas = df_filtro2.shape[0]
+            num_columnas = len(columnas_requeridas)
+            tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
+            tabla.style = 'Table Grid'
+    
+            # Agregar encabezados
+            for j, column_name in enumerate(columnas_requeridas):
+                cell = tabla.cell(0, j)
+                cell.text = column_name
                 paragraph = cell.paragraphs[0]
-                run = paragraph.runs[0]
+    
+                # Evitar error si no hay `runs`
+                if paragraph.runs:
+                    run = paragraph.runs[0]
+                else:
+                    run = paragraph.add_run()
+    
                 run.font.name = 'Calibri'
-                run.font.size = Pt(8)
+                run.font.size = Pt(6)
+                run.bold = True
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    
+            # Agregar los datos a la tabla
+            for i, row in enumerate(df_filtro2.itertuples(index=False), start=1):
+                # Agregar numeración en la primera columna
+                cell = tabla.cell(i, 0)
+                cell.text = str(i)
+                paragraph = cell.paragraphs[0]
+    
+                if paragraph.runs:
+                    run = paragraph.runs[0]
+                else:
+                    run = paragraph.add_run()
+    
+                run.font.name = 'Calibri'
+                run.font.size = Pt(6)
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    
+                # Agregar el resto de los datos
+                for j, value in enumerate(row, start=1):
+                    cell = tabla.cell(i, j)
+                    column_name = columnas_requeridas[j - 1]  # Ajustar índice de la columna
+    
+                    # Formatear la fecha
+                    if column_name == "FECHA HORA INFORME" and isinstance(value, (datetime, str)):
+                        try:
+                            fecha = pd.to_datetime(value).date()
+                            cell.text = fecha.strftime("%d-%m-%Y")
+                        except:
+                            cell.text = str(value)
+                    else:
+                        cell.text = str(value) if pd.notna(value) else ""
+    
+                    paragraph = cell.paragraphs[0]
+    
+                    if paragraph.runs:
+                        run = paragraph.runs[0]
+                    else:
+                        run = paragraph.add_run()
+    
+                    run.font.name = 'Calibri'
+                    run.font.size = Pt(6)
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    
+                    # Ajustar espacio para columnas específicas
+                    if column_name == "DESCRIPCIÓN DE LA FALLA":
+                        cell.width = Inches(3)
+                    elif column_name == "FECHA HORA INFORME":
+                        cell.width = Inches(1.5)
+    
+            # Centrar texto en todas las celdas
+            for row in tabla.rows:
+                for cell in row.cells:
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        else:
+            doc.add_paragraph('\nNo se encontraron datos para mostrar.')
+    except Exception as e:
+        print(f"Error en la creación del Word: {e}")
+    
 
-        # Centrar texto en todas las celdas
-        for row in tabla.rows:
-            for cell in row.cells:
-                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+
     
 ################################# 
         # Guardar el documento con el nombre especificado
@@ -1550,12 +1655,12 @@ boton_abrir_programacion = tk.Button(
 boton_abrir_programacion.pack(side="left", padx=10, pady=5)
 
 # 🔹 Nuevo botón al lateral derecho de abrir_programacion
-boton_nuevo_lateral = tk.Button(
+boton_abrir_averias = tk.Button(
     frame_botones, text="Abrir Archivo Averias",
     command=abrir_averias,
     font=("arial", 10)
 )
-boton_nuevo_lateral.pack(side="left", padx=10, pady=5)  # 🔹 Alineado a la derecha del anterior
+boton_abrir_averias.pack(side="left", padx=10, pady=5)  # 🔹 Alineado a la derecha del anterior
 
 
 # Aquí se agrega el menú desplegable al frame_semanal
@@ -1619,6 +1724,9 @@ boton_abrir_programacion.bind("<Leave>", on_leave)
 
 boton_volver_nuevo.bind("<Enter>", on_enter)
 boton_volver_nuevo.bind("<Leave>", on_leave)
+
+boton_abrir_averias.bind("<Enter>", on_enter)
+boton_abrir_averias.bind("<Leave>", on_leave)
 
 # Iniciar la aplicación
 ventana.mainloop()
