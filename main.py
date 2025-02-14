@@ -434,171 +434,131 @@ for i, campo in enumerate(campos_independientes):
 def actualizar_logica(valor):
     logica_filtro.set(valor)
 
-from difflib import get_close_matches
-
-import tkinter as tk
-from tkinter import filedialog, messagebox
-import pandas as pd
-
-import tkinter as tk
-from tkinter import filedialog, messagebox
-import pandas as pd
+# Variables globales
+df_averias = None
+df_filtrado = None
+df_tabla12prox = None
 
 def abrir_averias():
+    global tabla_averias  
     try:
-        # Seleccionar archivo Excel
         ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
         if not ruta_archivo:
-            return  # Si el usuario cancela, no hacer nada
+            return  
 
-        # Leer el archivo desde la fila 5 (omitimos las primeras 4 filas)
-        df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4)
+        df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4, usecols="B:Y")
 
-        # Definir las columnas necesarias
         columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
 
-        # Verificar si todas las columnas necesarias están presentes
         columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
         if columnas_faltantes:
-            messagebox.showerror(
-                "Error",
-                f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}"
-            )
+            messagebox.showerror("Error", f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}")
             return
 
-        # Filtrar las columnas necesarias
         tabla_averias = df_otro[columnas_necesarias]
 
         messagebox.showinfo("Éxito", "El archivo se leyó correctamente.")
-        return tabla_averias
 
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo leer el archivo:\n{e}")
 
 def abrir_programacion():
+    global df_filtrado, df_tabla12prox  
     try:
-        global programacion_cargada
-        # Abrir el archivo Excel
         ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
-        if ruta_archivo:
-            # Leer la hoja L63 del archivo Excel
-            df = pd.read_excel(ruta_archivo, sheet_name="L63")
+        if not ruta_archivo:
+            return
 
-            # Renombrar las columnas basándose en la primera fila del archivo
-            df.columns = df.iloc[0]
-            df = df[1:]
+        df = pd.read_excel(ruta_archivo, sheet_name="L63")
+        df.columns = df.iloc[0]
+        df = df[1:]
 
-            # Verificar si la columna FE existe
-            if "FE" not in df.columns:
-                messagebox.showerror("Error", "El archivo no contiene una columna 'FE'.")
-                return
+        if "FE" not in df.columns:
+            messagebox.showerror("Error", "El archivo no contiene una columna 'FE'.")
+            return
 
-            # Convertir la columna de FE a tipo datetime
-            df["FE"] = pd.to_datetime(df["FE"], errors="coerce")
+        df["FE"] = pd.to_datetime(df["FE"], errors="coerce")
 
-            # Verificar si hay fechas válidas
-            if df["FE"].isnull().all():
-                messagebox.showerror("Error", "La columna 'FE' no contiene fechas válidas.")
-                return
+        if df["FE"].isnull().all():
+            messagebox.showerror("Error", "La columna 'FE' no contiene fechas válidas.")
+            return
 
-            # Obtener la fecha mínima y máxima de la columna FE
-            fecha_minima = df["FE"].min()
-            fecha_maxima = df["FE"].max()
+        fecha_minima = df["FE"].min()
+        fecha_maxima = df["FE"].max()
 
-            # Validar rango de fechas
-            if pd.isnull(fecha_minima) or pd.isnull(fecha_maxima):
-                messagebox.showerror("Error", "No se encontraron fechas válidas para establecer el rango.")
-                return
+        if pd.isnull(fecha_minima) or pd.isnull(fecha_maxima):
+            messagebox.showerror("Error", "No se encontraron fechas válidas para establecer el rango.")
+            return
 
-            # Crear una nueva ventana para seleccionar el rango de fechas
-            ventana_fechas = tk.Toplevel()
-            ventana_fechas.title("Filtrar por Fecha")
-            ventana_fechas.geometry("800x700")
+        ventana_fechas = tk.Toplevel()
+        ventana_fechas.title("Filtrar por Fecha")
+        ventana_fechas.geometry("800x700")
 
-            # Etiquetas y calendarios para las fechas
-            tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
-            calendario_inicio = Calendar(
-                ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
-                mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
-                maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
-            )
-            calendario_inicio.pack(pady=10)
+        tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
+        calendario_inicio = Calendar(
+            ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
+            mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
+            maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
+        )
+        calendario_inicio.pack(pady=10)
 
-            tk.Label(ventana_fechas, text="Fecha de fin:").pack(pady=5)
-            calendario_fin = Calendar(
-                ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
-                mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
-                maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
-            )
-            calendario_fin.pack(pady=10)
+        tk.Label(ventana_fechas, text="Fecha de fin:").pack(pady=5)
+        calendario_fin = Calendar(
+            ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
+            mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
+            maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
+        )
+        calendario_fin.pack(pady=10)
 
-            # Función para aplicar el filtro y mostrar los resultados
-            def aplicar_filtro():
-                ventana_fechas.destroy()
-                try:
-                    fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
-                    fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d")
+        def aplicar_filtro():
+            global df_filtrado, df_tabla12prox  
+            ventana_fechas.destroy()
+            try:
+                fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
+                fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d")
 
-                    # Validar que la fecha de inicio no sea mayor que la de fin
-                    if fecha_inicio > fecha_fin:
-                        messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
-                        return
+                if fecha_inicio > fecha_fin:
+                    messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
+                    return
 
-                    # Filtrar los datos por el rango de fechas
-                    df_filtrado = df[(df["FE"] >= fecha_inicio) & (df["FE"] <= fecha_fin)]
+                df_filtrado = df[(df["FE"] >= fecha_inicio) & (df["FE"] <= fecha_fin)]
 
-                    # Verificar si hay datos filtrados
-                    if df_filtrado.empty:
-                        messagebox.showinfo("Sin datos", "No se encontraron datos para el rango de fechas seleccionado.")
-                        return
+                if df_filtrado.empty:
+                    messagebox.showinfo("Sin datos", "No se encontraron datos para el rango de fechas seleccionado.")
+                    return
 
-                    # Seleccionar columnas específicas para mostrar
-                    df_filtrado = df_filtrado[["Descripcion OT", "Equipo", "DEP", "EST", "SIST", "F.LIBERACIÓN", "FP", "Número de OT", "FE", "CAT"]]
-                    df_filtrado["FE"] = df_filtrado["FE"].dt.strftime('%Y-%m-%d')
+                df_filtrado = df_filtrado[["Descripcion OT", "Equipo", "DEP", "EST", "SIST", "F.LIBERACIÓN", "FP", "Número de OT", "FE", "CAT"]]
+                df_filtrado["FE"] = df_filtrado["FE"].dt.strftime('%Y-%m-%d')
 
-                except ValueError:
-                    messagebox.showerror("Error", "Error al procesar las fechas seleccionadas.")
-                if ruta_archivo:
-                    # Leer el archivo omitiendo las primeras 5 filas
-                    df_tabla12prox = pd.read_excel(ruta_archivo, sheet_name="INFORME-PRÓXIMAS 12SEM", skiprows=6)
+            except ValueError:
+                messagebox.showerror("Error", "Error al procesar las fechas seleccionadas.")
 
-                    # Eliminar las primeras 11 columnas manualmente
-                    df_tabla12prox = df_tabla12prox.iloc[:, 11:].reset_index(drop=True)
+            df_tabla12prox = pd.read_excel(ruta_archivo, sheet_name="INFORME-PRÓXIMAS 12SEM", skiprows=6)
 
-                    # Buscar la fila que contiene el título dentro de la primera columna disponible
-                    columna_titulo = df_tabla12prox.columns[0]  # Tomar la primera columna después de la eliminación
-                    fila_inicio = df_tabla12prox[df_tabla12prox[columna_titulo] == "Proyección de actividades según su categoría"].index
+            df_tabla12prox = df_tabla12prox.iloc[:, 11:].reset_index(drop=True)
 
-                    if not fila_inicio.empty:
-                        fila_inicio = fila_inicio[0] + 1
-                        df_actividades = df_tabla12prox.iloc[fila_inicio:].reset_index(drop=True)
+            columna_titulo = df_tabla12prox.columns[0]
+            fila_inicio = df_tabla12prox[df_tabla12prox[columna_titulo] == "Proyección de actividades según su categoría"].index
 
-                        # Eliminar columnas "Unnamed" antes de asignar encabezados
-                        df_actividades.dropna(axis=1, how='all', inplace=True)  # Elimina columnas completamente vacías
-                        df_actividades.columns = df_actividades.iloc[0].fillna("")  # Reemplazar NaN con cadenas vacías
-                        df_actividades = df_actividades[1:].reset_index(drop=True)  # Eliminar la fila usada como encabezado
+            if not fila_inicio.empty:
+                fila_inicio = fila_inicio[0] + 1
+                df_tabla12prox = df_tabla12prox.iloc[fila_inicio:].reset_index(drop=True)
+                df_tabla12prox.dropna(axis=1, how='all', inplace=True)
+                df_tabla12prox.columns = df_tabla12prox.iloc[0].fillna("")
+                df_tabla12prox = df_tabla12prox[1:].reset_index(drop=True)
+                df_tabla12prox = df_tabla12prox.loc[:, ~df_tabla12prox.columns.astype(str).str.contains("Unnamed|^$", regex=True)]
 
-                        # Filtrar solo las columnas con nombres válidos (descartando 'Unnamed' o vacías)
-                        df_actividades = df_actividades.loc[:, ~df_actividades.columns.astype(str).str.contains("Unnamed|^$", regex=True)]
+            messagebox.showinfo("Éxito", "Programación cargada correctamente.")
 
-                    else:
-                        df_actividades = None
-
-                    # Si todo está correcto, marcar que la programación ha sido cargada
-                    programacion_cargada = True
-                    messagebox.showinfo("Éxito", "Programación cargada correctamente.")
-
-
-                    crear_word(df_filtrado,df_tabla12prox)
-            # Botón para aplicar el filtro
-            boton_aplicar = tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro)
-            boton_aplicar.pack(pady=10)
-            
+        boton_aplicar = tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro)
+        boton_aplicar.pack(pady=10)
 
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo abrir el archivo Excel:\n{e}")
 
-def crear_word(df_filtrado, df_tabla12prox):
+
+def crear_word():
+    global df_tabla12prox
     # Crear un nuevo documento de Word
     doc = Document()
 
@@ -1470,50 +1430,56 @@ def crear_word(df_filtrado, df_tabla12prox):
     mantenimiento3.runs[0].font.name = 'Calibri'
     mantenimiento3.runs[0].font.size = Pt(9.5)
 
-    averias = abrir_averias()
-    
-# Definir los encabezados de la tabla
+    # Definir los encabezados de la tabla
     columnas = ["N°", "LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
                 "ACTIVO", "CAT", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
-    
-    num_filas = averias.shape[0]  # Número de filas de datos
-    num_columnas = len(columnas)  # Número de columnas predefinidas
-    # Crear la tabla con encabezados y filas de datos
-    tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
-    tabla.style = 'Table Grid'
-    # Agregar encabezados a la tabla
-    for j, column_name in enumerate(columnas):
-        cell = tabla.cell(0, j)
-        cell.text = column_name
-        paragraph = cell.paragraphs[0]
-        run = paragraph.runs[0]
-        run.font.name = 'Calibri'
-        run.font.size = Pt(6)
-        run.bold = True
-        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    # Agregar los datos a la tabla
-    for i, row in enumerate(averias.itertuples(index=False), start=1):
-        # Agregar numeración en la primera columna
-        cell = tabla.cell(i, 0)
-        cell.text = str(i)
-        paragraph = cell.paragraphs[0]
-        run = paragraph.runs[0]
-        run.font.name = 'Calibri'
-        run.font.size = Pt(6)
-        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-        # Agregar el resto de los datos
-        for j, value in enumerate(row, start=1):
-            cell = tabla.cell(i, j)
-            cell.text = str(value) if value is not None else ""
+
+    # Verificar que la variable df_averias tiene datos antes de crear la tabla
+    if df_averias is not None and not df_averias.empty:
+        num_filas = df_averias.shape[0]  # Número de filas de datos
+        num_columnas = len(columnas)  # Número de columnas predefinidas
+
+        # Crear la tabla con encabezados y filas de datos
+        tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
+        tabla.style = 'Table Grid'
+
+        # Agregar encabezados a la tabla
+        for j, column_name in enumerate(columnas):
+            cell = tabla.cell(0, j)
+            cell.text = column_name
             paragraph = cell.paragraphs[0]
             run = paragraph.runs[0]
             run.font.name = 'Calibri'
-            run.font.size = Pt(6)
+            run.font.size = Pt(8)
+            run.bold = True
             paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    # Centrar texto en todas las celdas
-    for row in tabla.rows:
-        for cell in row.cells:
-            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+        # Agregar los datos a la tabla
+        for i, row in enumerate(df_averias.itertuples(index=False), start=1):
+            # Agregar numeración en la primera columna
+            cell = tabla.cell(i, 0)
+            cell.text = str(i)
+            paragraph = cell.paragraphs[0]
+            run = paragraph.runs[0]
+            run.font.name = 'Calibri'
+            run.font.size = Pt(8)
+            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Agregar el resto de los datos
+            for j, value in enumerate(row, start=1):
+                cell = tabla.cell(i, j)
+                cell.text = str(value) if pd.notna(value) else ""
+                paragraph = cell.paragraphs[0]
+                run = paragraph.runs[0]
+                run.font.name = 'Calibri'
+                run.font.size = Pt(8)
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+        # Centrar texto en todas las celdas
+        for row in tabla.rows:
+            for cell in row.cells:
+                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    
 ################################# 
         # Guardar el documento con el nombre especificado
     doc.save("prueba.docx")
@@ -1583,14 +1549,14 @@ boton_abrir_programacion = tk.Button(
 )
 boton_abrir_programacion.pack(side="left", padx=10, pady=5)
 
-# Nuevo botón para leer otro archivo
-boton_abrir_averias = tk.Button(
-    frame_botones,
-    text="Abrir Archivo Averias",
-    command=abrir_averias, 
+# 🔹 Nuevo botón al lateral derecho de abrir_programacion
+boton_nuevo_lateral = tk.Button(
+    frame_botones, text="Abrir Archivo Averias",
+    command=abrir_averias,
     font=("arial", 10)
 )
-boton_abrir_averias.pack(side="left", padx=10, pady=5)
+boton_nuevo_lateral.pack(side="left", padx=10, pady=5)  # 🔹 Alineado a la derecha del anterior
+
 
 # Aquí se agrega el menú desplegable al frame_semanal
 opciones = ["A", "B", "0"]
@@ -1613,7 +1579,7 @@ menu_opciones.pack(pady=10)
 boton_exportar = tk.Button(
     frame_semanal,
     text="Exportar Datos Seleccionados",
-    command=exportar_seleccion,
+    command=crear_word,
     font=("arial", 10, "bold"),
     activebackground="#4c70ba",
     activeforeground="white",
@@ -1653,9 +1619,6 @@ boton_abrir_programacion.bind("<Leave>", on_leave)
 
 boton_volver_nuevo.bind("<Enter>", on_enter)
 boton_volver_nuevo.bind("<Leave>", on_leave)
-
-boton_abrir_averias.bind("<Enter>", on_enter)
-boton_abrir_averias.bind("<Leave>", on_leave)
 
 # Iniciar la aplicación
 ventana.mainloop()
