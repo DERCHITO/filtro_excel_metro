@@ -1482,8 +1482,26 @@ def crear_word():
             # Crear la tabla en el documento de Word
             num_filas = df_filtro2.shape[0]
             num_columnas = len(columnas_requeridas) + 1  # +1 para la columna "N°"
-            tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
+            tabla = doc.add_table(rows=num_filas + 2, cols=num_columnas)  # +2 para la fila de título
             tabla.style = 'Table Grid'
+
+            # Agregar la fila inicial con el texto "Fallas Operacionales Semana"
+            fila_titulo = tabla.rows[0].cells
+            celda_titulo = fila_titulo[0]  # Usar la primera celda para el título
+            celda_titulo.text = "Fallas Operacionales Semana"
+            # Combinar todas las celdas de la fila
+            for celda in fila_titulo[1:]:
+                celda_titulo.merge(celda)
+            # Formato del título
+            paragraph = celda_titulo.paragraphs[0]
+            if paragraph.runs:
+                run = paragraph.runs[0]
+            else:
+                run = paragraph.add_run()
+            run.font.name = 'Calibri'
+            run.font.size = Pt(8)
+            run.bold = True
+            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
             # Calcular el ancho máximo de la columna "DESCRIPCIÓN DE LA FALLA"
             max_descripcion_length = df_filtro2["DESCRIPCIÓN DE LA FALLA"].astype(str).apply(len).max()
@@ -1491,7 +1509,7 @@ def crear_word():
 
             # Agregar encabezados
             # Columna "N°"
-            cell = tabla.cell(0, 0)
+            cell = tabla.cell(1, 0)
             cell.text = "N°"
             paragraph = cell.paragraphs[0]
             if paragraph.runs:
@@ -1505,7 +1523,7 @@ def crear_word():
 
             # Resto de las columnas
             for j, column_name in enumerate(columnas_requeridas, start=1):
-                cell = tabla.cell(0, j)
+                cell = tabla.cell(1, j)
                 cell.text = column_name
                 paragraph = cell.paragraphs[0]
 
@@ -1525,10 +1543,10 @@ def crear_word():
                     cell.width = descripcion_width
 
             # Agregar los datos a la tabla
-            for i, row in enumerate(df_filtro2.itertuples(index=False), start=1):
+            for i, row in enumerate(df_filtro2.itertuples(index=False), start=2):  # start=2 para saltar la fila de título
                 # Columna "N°"
                 cell = tabla.cell(i, 0)
-                cell.text = str(i)
+                cell.text = str(i - 1)  # Restar 1 para que la numeración comience desde 1
                 paragraph = cell.paragraphs[0]
                 if paragraph.runs:
                     run = paragraph.runs[0]
@@ -1578,8 +1596,6 @@ def crear_word():
             doc.add_paragraph('\nNo se encontraron datos para mostrar.')
     except Exception as e:
         print(f"Error en la creación del Word: {e}")
-    
-
 
 ################################# 
         # Guardar el documento con el nombre especificado
