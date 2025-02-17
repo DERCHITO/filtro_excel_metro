@@ -1488,7 +1488,7 @@ def crear_word():
             # Agregar la fila inicial con el texto "Fallas Operacionales Semana"
             fila_titulo = tabla.rows[0].cells
             celda_titulo = fila_titulo[0]  # Usar la primera celda para el título
-            celda_titulo.text = "Fallas Operacionales Semana"
+            celda_titulo.text = "Fallas Operacionales Semana "+semanas_transcurridas()
             # Combinar todas las celdas de la fila
             for celda in fila_titulo[1:]:
                 celda_titulo.merge(celda)
@@ -1596,6 +1596,93 @@ def crear_word():
             doc.add_paragraph('\nNo se encontraron datos para mostrar.')
     except Exception as e:
         print(f"Error en la creación del Word: {e}")
+
+
+#############################
+    tabla_adherencia = doc.add_paragraph('Tabla N°9 – Fallas Operacionales Semana ' + semanas_transcurridas() + ".")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    doc.add_page_break()
+
+    plan_mantenimiento = doc.add_heading("3.3	Comportamiento fallas operacionales últimas 12 semanas. ", 2)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
+
+    mantenimiento3 = doc.add_paragraph("\n      A continuación, se gráfica el comportamiento de las fallas operacionales de las últimas 12 semanas según sus categorías.")
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
+
+    tabla_adherencia = doc.add_paragraph("Gráfico N°3 – Comportamiento fallas operacionales últimas 12 semanas categoría 1.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    tabla_adherencia = doc.add_paragraph("Gráfico N°4 – Comportamiento fallas operacionales últimas 12 semanas categoría 2.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    tabla_adherencia = doc.add_paragraph("Gráfico N°5 – Comportamiento fallas operacionales últimas 12 semanas categoría 3.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    doc.add_page_break()
+
+    plan_mantenimiento = doc.add_heading("3.4 	Comparación fallas operacionales. ", 2)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
+
+    mantenimiento3 = doc.add_paragraph("\n      A continuación, se presenta la comparación 2021-2022-2023-2024-2025 de las fallas operacionales del sistema de comunicaciones según su categoría. ")
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
+
+    tabla_adherencia = doc.add_paragraph("\n    Gráfico N°6 – Comportamiento de las fallas operacionales en los últimos 4 años categorías 1, 2 y 3.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    tabla_adherencia = doc.add_paragraph("\n    Gráfico N°7 – Comportamiento mes a mes de las fallas operacionales en los últimos 4 años categoría 1.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    tabla_adherencia = doc.add_paragraph("\n    Gráfico N°8 – Comportamiento mes a mes de las fallas operacionales en los últimos 4 años categoría 2.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    tabla_adherencia = doc.add_paragraph("\n    Gráfico N°9 – Comportamiento mes a mes de las fallas operacionales en los últimos 4 años categoría 3.")
+    tabla_adherencia.runs[0].font.name = 'Calibri'
+    tabla_adherencia.runs[0].font.size = Pt(9.5)
+    tabla_adherencia.runs[0].font.bold = False
+    tabla_adherencia.alignment = 1
+
+    doc.add_page_break()
+
+    plan_mantenimiento = doc.add_heading("3.5 	Resumen fallas operacionales del mes en curso.", 2)
+    plan_mantenimiento.runs[0].font.name = 'Calibri'
+    plan_mantenimiento.runs[0].font.size = Pt(10)
+    plan_mantenimiento.runs[0].font.color.rgb = RGBColor(0, 0, 0)  # Negro
+
+    mantenimiento3 = doc.add_paragraph("\n      Para la semana en estudio, durante el mes de diciembre se ha informado un total 15 averías asociadas al sistema de comunicaciones.")
+    mantenimiento3.runs[0].font.name = 'Calibri'
+    mantenimiento3.runs[0].font.size = Pt(9.5)
+    
+
+    
+
 
 ################################# 
         # Guardar el documento con el nombre especificado
