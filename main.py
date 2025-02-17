@@ -450,76 +450,54 @@ def abrir_averias():
 
         columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
 
-        columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
-        if columnas_faltantes:
+        if not all(col in df_otro.columns for col in columnas_necesarias):
+            columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
             messagebox.showerror("Error", f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}")
             return
 
-        # Convertir la columna de fecha a formato datetime
         df_otro["FECHA HORA INFORME"] = pd.to_datetime(df_otro["FECHA HORA INFORME"], errors="coerce")
 
         if df_otro["FECHA HORA INFORME"].isnull().all():
             messagebox.showerror("Error", "La columna 'FECHA HORA INFORME' no contiene fechas válidas.")
             return
 
-        # Obtener la fecha mínima y máxima del DataFrame
         fecha_minima = df_otro["FECHA HORA INFORME"].min()
         fecha_maxima = df_otro["FECHA HORA INFORME"].max()
 
-        # Crear una ventana para seleccionar el rango de fechas
         ventana_fechas = tk.Toplevel()
         ventana_fechas.title("Filtrar por Fecha de Informe")
-        ventana_fechas.geometry("800x700")
+        ventana_fechas.geometry("400x300")
 
         tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
-        calendario_inicio = Calendar(
-            ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
-            mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
-            maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
-        )
+        calendario_inicio = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
         calendario_inicio.pack(pady=10)
 
         tk.Label(ventana_fechas, text="Fecha de fin:").pack(pady=5)
-        calendario_fin = Calendar(
-            ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd",
-            mindate=min(fecha_minima, datetime.now() - pd.Timedelta(days=365)),
-            maxdate=max(fecha_maxima, datetime.now() + pd.Timedelta(days=365))
-        )
+        calendario_fin = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
         calendario_fin.pack(pady=10)
 
         def aplicar_filtro():
             global df_averias  
             ventana_fechas.destroy()
-            try:
-                fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
-                fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d")
+            fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
+            fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d")
 
-                if fecha_inicio > fecha_fin:
-                    messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
-                    return
+            if fecha_inicio > fecha_fin:
+                messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
+                return
 
-                # Filtrar los datos en base a la fecha seleccionada
-                df_filtrado = df_otro[(df_otro["FECHA HORA INFORME"] >= fecha_inicio) & (df_otro["FECHA HORA INFORME"] <= fecha_fin)]
+            df_filtrado = df_otro[(df_otro["FECHA HORA INFORME"] >= fecha_inicio) & (df_otro["FECHA HORA INFORME"] <= fecha_fin)]
 
-                if df_filtrado.empty:
-                    messagebox.showinfo("Sin datos", "No se encontraron averías en el rango de fechas seleccionado.")
-                    return
+            if df_filtrado.empty:
+                messagebox.showinfo("Sin datos", "No se encontraron averías en el rango de fechas seleccionado.")
+                return
 
-                # Filtrar solo las columnas necesarias
-                df_averias = df_filtrado[columnas_necesarias]
+            df_averias = df_filtrado[columnas_necesarias]
+            messagebox.showinfo("Éxito", "Los datos se han filtrado correctamente.")
 
-                messagebox.showinfo("Éxito", "Los datos se han filtrado correctamente.")
-
-            except ValueError:
-                messagebox.showerror("Error", "Error al procesar las fechas seleccionadas.")
-
-        # Botón para aplicar el filtro
-        boton_aplicar = tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro)
-        boton_aplicar.pack(pady=10)
-
+        tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro).pack(pady=10)
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo leer el archivo:\n{e}")
-
 
 def abrir_programacion():
     global df_filtrado, df_tabla12prox  
@@ -1496,55 +1474,75 @@ def crear_word():
                                    "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
             # Filtrar solo las columnas necesarias
             df_filtro2 = df_averias[columnas_requeridas].copy()
-    
+
             # Formatear la columna 'FECHA HORA INFORME' para que solo contenga la fecha
             if 'FECHA HORA INFORME' in df_filtro2.columns:
                 df_filtro2['FECHA HORA INFORME'] = pd.to_datetime(df_filtro2['FECHA HORA INFORME'], errors='coerce').dt.date
-    
+
             # Crear la tabla en el documento de Word
             num_filas = df_filtro2.shape[0]
-            num_columnas = len(columnas_requeridas)
+            num_columnas = len(columnas_requeridas) + 1  # +1 para la columna "N°"
             tabla = doc.add_table(rows=num_filas + 1, cols=num_columnas)
             tabla.style = 'Table Grid'
-    
+
+            # Calcular el ancho máximo de la columna "DESCRIPCIÓN DE LA FALLA"
+            max_descripcion_length = df_filtro2["DESCRIPCIÓN DE LA FALLA"].astype(str).apply(len).max()
+            descripcion_width = Inches(min(6, max(1, max_descripcion_length * 0.1)))  # Ajustar el ancho dinámicamente
+
             # Agregar encabezados
-            for j, column_name in enumerate(columnas_requeridas):
+            # Columna "N°"
+            cell = tabla.cell(0, 0)
+            cell.text = "N°"
+            paragraph = cell.paragraphs[0]
+            if paragraph.runs:
+                run = paragraph.runs[0]
+            else:
+                run = paragraph.add_run()
+            run.font.name = 'Calibri'
+            run.font.size = Pt(6)
+            run.bold = True
+            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Resto de las columnas
+            for j, column_name in enumerate(columnas_requeridas, start=1):
                 cell = tabla.cell(0, j)
                 cell.text = column_name
                 paragraph = cell.paragraphs[0]
-    
-                # Evitar error si no hay `runs`
+
+                # Formato del encabezado
                 if paragraph.runs:
                     run = paragraph.runs[0]
                 else:
                     run = paragraph.add_run()
-    
+
                 run.font.name = 'Calibri'
                 run.font.size = Pt(6)
                 run.bold = True
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    
+
+                # Ajustar el ancho de la columna "DESCRIPCIÓN DE LA FALLA"
+                if column_name == "DESCRIPCIÓN DE LA FALLA":
+                    cell.width = descripcion_width
+
             # Agregar los datos a la tabla
             for i, row in enumerate(df_filtro2.itertuples(index=False), start=1):
-                # Agregar numeración en la primera columna
+                # Columna "N°"
                 cell = tabla.cell(i, 0)
                 cell.text = str(i)
                 paragraph = cell.paragraphs[0]
-    
                 if paragraph.runs:
                     run = paragraph.runs[0]
                 else:
                     run = paragraph.add_run()
-    
                 run.font.name = 'Calibri'
                 run.font.size = Pt(6)
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    
-                # Agregar el resto de los datos
+
+                # Resto de las columnas
                 for j, value in enumerate(row, start=1):
                     cell = tabla.cell(i, j)
                     column_name = columnas_requeridas[j - 1]  # Ajustar índice de la columna
-    
+
                     # Formatear la fecha
                     if column_name == "FECHA HORA INFORME" and isinstance(value, (datetime, str)):
                         try:
@@ -1554,24 +1552,24 @@ def crear_word():
                             cell.text = str(value)
                     else:
                         cell.text = str(value) if pd.notna(value) else ""
-    
+
                     paragraph = cell.paragraphs[0]
-    
+
                     if paragraph.runs:
                         run = paragraph.runs[0]
                     else:
                         run = paragraph.add_run()
-    
+
                     run.font.name = 'Calibri'
                     run.font.size = Pt(6)
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-    
+
                     # Ajustar espacio para columnas específicas
                     if column_name == "DESCRIPCIÓN DE LA FALLA":
-                        cell.width = Inches(3)
+                        cell.width = descripcion_width
                     elif column_name == "FECHA HORA INFORME":
                         cell.width = Inches(1.5)
-    
+
             # Centrar texto en todas las celdas
             for row in tabla.rows:
                 for cell in row.cells:
@@ -1583,8 +1581,6 @@ def crear_word():
     
 
 
-
-    
 ################################# 
         # Guardar el documento con el nombre especificado
     doc.save("prueba.docx")
