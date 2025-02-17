@@ -1647,6 +1647,14 @@ boton_exportar = tk.Button(
 )
 boton_exportar.grid(row=5, column=0, pady=10, sticky="n")
 
+# Botón para volver al menú principal
+boton_volver = tk.Button(
+    frame_anexo, text="← Volver al Menú",
+    command=lambda: cambiar_frame(frame_anexo, frame_menu),
+    font=("arial", 10)
+)
+boton_volver.grid(pady=10)
+
 # Crear el frame_semanal (nuevo frame)
 frame_semanal = tk.Frame(ventana, bg="#2b2b2b")
 frame_menu.pack(fill="both", expand=True)
@@ -1729,6 +1737,9 @@ boton_exportar.bind("<Leave>", on_leave)
 
 boton_volver_nuevo.bind("<Enter>", on_enter)
 boton_volver_nuevo.bind("<Leave>", on_leave)
+
+boton_volver.bind("<Enter>", on_enter)
+boton_volver.bind("<Leave>", on_leave)
 
 # Botones del frame_semanal
 boton_abrir_programacion.bind("<Enter>", on_enter)
