@@ -623,7 +623,6 @@ def crear_word():
     # y luego utilizar el método `alignment` para centrar el parágrafo
     imagen_portada = doc.add_paragraph()
     imagen_portada.alignment = 1  # 1 es el valor para centrar
-    imagen_portada.add_run().add_picture("imagenes/logo_metro.png", width=Inches(3))
     imagen_portada = doc.add_paragraph()
 
     portada = doc.add_paragraph('\nMANTENIMIENTO DEL SISTEMA DE COMUNICACIONES \nLINEAS 6 Y 3\nMETRO DE SANTIAGO \n\nREPORTE SEMANAL ' + str(datetime.now().year) + '\nSEMANA ' + semanas_transcurridas() + '\nCONTRATO N° MN-236-2014-G')
@@ -669,7 +668,6 @@ def crear_word():
     # Insertar la imagen en la celda izquierda
     celda_izquierda = row[0].paragraphs[0]
     try:
-        celda_izquierda.add_run().add_picture("imagenes/logo_metro.png", width=Inches(1.2))
         celda_izquierda.paragraph_format.alignment = 0
     except Exception as e:
         print(f"Error al cargar la imagen izquierda: {e}")
@@ -684,7 +682,6 @@ def crear_word():
     # Insertar la imagen en la celda derecha
     celda_derecha = row[2].paragraphs[0]
     try:
-        celda_derecha.add_run().add_picture("imagenes/logo_sice.png", width=Inches(1))
         celda_derecha.paragraph_format.alignment = 2
     except Exception as e:
         print(f"Error al cargar la imagen derecha: {e}")
@@ -727,7 +724,6 @@ def crear_word():
             format_cell(tabla_portada.rows[2].cells[i], text, font_name="Calibri", font_size=9.5, font_bold=False)
 
     logo_tabla = tabla_portada.rows[3].cells[6].paragraphs[0]
-    logo_tabla.add_run().add_picture("imagenes/logo_sice.png", width=Inches(1))
     logo_tabla.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
     # Unir celdas 
@@ -2002,8 +1998,14 @@ def crear_word():
 
 
 ################################# 
-        # Guardar el documento con el nombre especificado
-    doc.save("prueba.docx")
+    # Abrir un cuadro de diálogo para seleccionar la ruta de guardado
+    file_path = filedialog.asksaveasfilename(defaultextension=".docx", filetypes=[("Word documents", "*.docx")])
+
+    if file_path:
+        doc.save(file_path)
+        messagebox.showinfo("Guardado exitoso", f"Archivo guardado correctamente en {file_path}")
+    else:
+        messagebox.showwarning("Guardado cancelado", "El guardado del archivo ha sido cancelado")
     print(f"Portada agregada correctamente. Archivo guardado")
 
 # Variable global para la lógica (Y u O)
