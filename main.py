@@ -448,7 +448,7 @@ def abrir_averias():
 
         df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4, usecols="B:Y")
 
-        columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
+        columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana"]
 
         if not all(col in df_otro.columns for col in columnas_necesarias):
             columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
@@ -466,7 +466,7 @@ def abrir_averias():
 
         ventana_fechas = tk.Toplevel()
         ventana_fechas.title("Filtrar por Fecha de Informe")
-        ventana_fechas.geometry("400x300")
+        ventana_fechas.geometry("800x700")
 
         tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
         calendario_inicio = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
@@ -1680,7 +1680,135 @@ def crear_word():
     mantenimiento3.runs[0].font.name = 'Calibri'
     mantenimiento3.runs[0].font.size = Pt(9.5)
     
+    try:
+        if not df_averias.empty:
+            # Definir las columnas requeridas
+            columnas_requeridas = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
+                                   "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana"]
+            # Filtrar solo las columnas necesarias
+            df_filtro2 = df_averias[columnas_requeridas].copy()
 
+            # Formatear la columna 'FECHA HORA INFORME' para que solo contenga la fecha
+            if 'FECHA HORA INFORME' in df_filtro2.columns:
+                df_filtro2['FECHA HORA INFORME'] = pd.to_datetime(df_filtro2['FECHA HORA INFORME'], errors='coerce').dt.date
+
+            # Crear la tabla en el documento de Word
+            num_filas = df_filtro2.shape[0]
+            num_columnas = len(columnas_requeridas) + 1  # +1 para la columna "N°"
+            tabla10 = doc.add_table(rows=num_filas + 2, cols=num_columnas)  # +2 para la fila de título
+            tabla10.style = 'Table Grid'
+
+            # Agregar la fila inicial con el texto "Fallas Operacionales Semana"
+            fila_titulo = tabla10.rows[0].cells
+            celda_titulo = fila_titulo[0]  # Usar la primera celda para el título
+            celda_titulo.text = "Fallas Operacionales mes de " + Nombre_mes_actual()
+            # Combinar todas las celdas de la fila
+            for celda in fila_titulo[1:]:
+                celda_titulo.merge(celda)
+            # Formato del título
+            paragraph = celda_titulo.paragraphs[0]
+            if paragraph.runs:
+                run = paragraph.runs[0]
+            else:
+                run = paragraph.add_run()
+            run.font.name = 'Calibri'
+            run.font.size = Pt(8)
+            run.bold = True
+            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Calcular el ancho máximo de la columna "DESCRIPCIÓN DE LA FALLA"
+            max_descripcion_length = df_filtro2["DESCRIPCIÓN DE LA FALLA"].astype(str).apply(len).max()
+            descripcion_width = Inches(min(6, max(1, max_descripcion_length * 0.1)))  # Ajustar el ancho dinámicamente
+
+            # Agregar encabezados
+            # Columna "N°"
+            cell = tabla10.cell(1, 0)
+            cell.text = "N°"
+            paragraph = cell.paragraphs[0]
+            if paragraph.runs:
+                run = paragraph.runs[0]
+            else:
+                run = paragraph.add_run()
+            run.font.name = 'Calibri'
+            run.font.size = Pt(6)
+            run.bold = True
+            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Resto de las columnas
+            for j, column_name in enumerate(columnas_requeridas, start=1):
+                cell = tabla10.cell(1, j)
+                cell.text = column_name
+                paragraph = cell.paragraphs[0]
+
+                # Formato del encabezado
+                if paragraph.runs:
+                    run = paragraph.runs[0]
+                else:
+                    run = paragraph.add_run()
+
+                run.font.name = 'Calibri'
+                run.font.size = Pt(6)
+                run.bold = True
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                # Ajustar el ancho de la columna "DESCRIPCIÓN DE LA FALLA"
+                if column_name == "DESCRIPCIÓN DE LA FALLA":
+                    cell.width = descripcion_width
+
+            # Agregar los datos a la tabla10
+            for i, row in enumerate(df_filtro2.itertuples(index=False), start=2):  # start=2 para saltar la fila de título
+                # Columna "N°"
+                cell = tabla10.cell(i, 0)
+                cell.text = str(i - 1)  # Restar 1 para que la numeración comience desde 1
+                paragraph = cell.paragraphs[0]
+                if paragraph.runs:
+                    run = paragraph.runs[0]
+                else:
+                    run = paragraph.add_run()
+                run.font.name = 'Calibri'
+                run.font.size = Pt(6)
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                # Resto de las columnas
+                for j, value in enumerate(row, start=1):
+                    cell = tabla10.cell(i, j)
+                    column_name = columnas_requeridas[j - 1]  # Ajustar índice de la columna
+
+                    # Formatear la fecha
+                    if column_name == "FECHA HORA INFORME" and isinstance(value, (datetime, str)):
+                        try:
+                            fecha = pd.to_datetime(value).date()
+                            cell.text = fecha.strftime("%d-%m-%Y")
+                        except:
+                            cell.text = str(value)
+                    else:
+                        cell.text = str(value) if pd.notna(value) else ""
+
+                    paragraph = cell.paragraphs[0]
+
+                    if paragraph.runs:
+                        run = paragraph.runs[0]
+                    else:
+                        run = paragraph.add_run()
+
+                    run.font.name = 'Calibri'
+                    run.font.size = Pt(6)
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                    # Ajustar espacio para columnas específicas
+                    if column_name == "DESCRIPCIÓN DE LA FALLA":
+                        cell.width = descripcion_width
+                    elif column_name == "FECHA HORA INFORME":
+                        cell.width = Inches(1.5)
+
+            # Centrar texto en todas las celdas
+            for row in tabla10.rows:
+                for cell in row.cells:
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        else:
+            doc.add_paragraph('\nNo se encontraron datos para mostrar.')
+    except Exception as e:
+        print(f"Error en la creación del Word: {e}")
     
 
 
