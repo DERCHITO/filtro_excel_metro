@@ -3,7 +3,7 @@ from tkinter import messagebox, filedialog
 from openpyxl import Workbook, load_workbook  # Para Excel
 from docx import Document  # Para Word
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_PARAGRAPH_ALIGNMENT
 from docx.oxml import OxmlElement
@@ -448,7 +448,7 @@ def abrir_averias():
 
         df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4, usecols="B:Y")
 
-        columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana"]
+        columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana", "TIPO SICE"]
 
         if not all(col in df_otro.columns for col in columnas_necesarias):
             columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
@@ -480,7 +480,7 @@ def abrir_averias():
             global df_averias  
             ventana_fechas.destroy()
             fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
-            fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d")
+            fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
 
             if fecha_inicio > fecha_fin:
                 messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
@@ -564,7 +564,7 @@ def abrir_programacion():
                     messagebox.showinfo("Sin datos", "No se encontraron datos para el rango de fechas seleccionado.")
                     return
 
-                df_filtrado = df_filtrado[["Descripcion OT", "Equipo", "DEP", "EST", "SIST", "F.LIBERACIÓN", "FP", "Número de OT", "FE", "CAT"]]
+                df_filtrado = df_filtrado[["Descripcion OT", "Equipo", "DEP", "EST", "SIST", "F.LIBERACIÓN", "FP", "Número de OT", "FE", "CAT", "ESTADO MMS"]]
                 df_filtrado["FE"] = df_filtrado["FE"].dt.strftime('%Y-%m-%d')
 
             except ValueError:
@@ -623,6 +623,7 @@ def crear_word():
     # y luego utilizar el método `alignment` para centrar el parágrafo
     imagen_portada = doc.add_paragraph()
     imagen_portada.alignment = 1  # 1 es el valor para centrar
+    imagen_portada.add_run().add_picture("imagenes/logo_metro.png", width=Inches(3))
     imagen_portada = doc.add_paragraph()
 
     portada = doc.add_paragraph('\nMANTENIMIENTO DEL SISTEMA DE COMUNICACIONES \nLINEAS 6 Y 3\nMETRO DE SANTIAGO \n\nREPORTE SEMANAL ' + str(datetime.now().year) + '\nSEMANA ' + semanas_transcurridas() + '\nCONTRATO N° MN-236-2014-G')
@@ -668,6 +669,7 @@ def crear_word():
     # Insertar la imagen en la celda izquierda
     celda_izquierda = row[0].paragraphs[0]
     try:
+        celda_izquierda.add_run().add_picture("imagenes/logo_metro.png", width=Inches(1.2))
         celda_izquierda.paragraph_format.alignment = 0
     except Exception as e:
         print(f"Error al cargar la imagen izquierda: {e}")
@@ -682,6 +684,7 @@ def crear_word():
     # Insertar la imagen en la celda derecha
     celda_derecha = row[2].paragraphs[0]
     try:
+        celda_derecha.add_run().add_picture("imagenes/logo_sice.png", width=Inches(1))
         celda_derecha.paragraph_format.alignment = 2
     except Exception as e:
         print(f"Error al cargar la imagen derecha: {e}")
@@ -724,6 +727,7 @@ def crear_word():
             format_cell(tabla_portada.rows[2].cells[i], text, font_name="Calibri", font_size=9.5, font_bold=False)
 
     logo_tabla = tabla_portada.rows[3].cells[6].paragraphs[0]
+    logo_tabla.add_run().add_picture("imagenes/logo_sice.png", width=Inches(1))
     logo_tabla.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
     # Unir celdas 
@@ -818,12 +822,12 @@ def crear_word():
                 df_filtro1 = df_filtrado[df_filtrado['CAT'] == 'CAT 1']
 
             # Eliminar las columnas no requeridas del DataFrame si existen
-            columnas_requeridas = ['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']
+            columnas_requeridas = ['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'FE', 'Número de OT']
             columnas_a_eliminar = [col for col in df_filtro1.columns if col not in columnas_requeridas]
             df_filtro1 = df_filtro1.drop(columns=columnas_a_eliminar, errors='ignore')
 
-            # Formatear las columnas 'F.LIBERACIÓN' y 'FP' para que solo contengan la fecha
-            for col in ['F.LIBERACIÓN', 'FP']:
+            # Formatear las columnas 'FE' y 'FP' para que solo contengan la fecha
+            for col in ['FE', 'FP']:
                 if col in df_filtro1.columns:
                     df_filtro1[col] = pd.to_datetime(df_filtro1[col], errors='coerce').dt.date
 
@@ -833,7 +837,7 @@ def crear_word():
             num_columnas = len(columnas)  # Número de columnas predefinidas
 
             # Ordenar las columnas según el formato deseado
-            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']]
+            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'FE', 'Número de OT']]
 
             # Crear la tabla con las columnas requeridas
             columnas = ["N°", "DESCRIPCIÓN", "Equipo", "Línea", "Estación", "Sistema", "Plan Matriz", "Ejecutado", "OT"]
@@ -917,17 +921,17 @@ def crear_word():
                 df_filtro1 = df_filtrado[df_filtrado['CAT'] == 'CAT 2']
 
             # Eliminar las columnas no requeridas del DataFrame si existen
-            columnas_requeridas = ['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']
+            columnas_requeridas = ['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'FE', 'Número de OT']
             columnas_a_eliminar = [col for col in df_filtro1.columns if col not in columnas_requeridas]
             df_filtro1 = df_filtro1.drop(columns=columnas_a_eliminar, errors='ignore')
 
-            # Formatear las columnas 'F.LIBERACIÓN' y 'FP' para que solo contengan la fecha
-            for col in ['F.LIBERACIÓN', 'FP']:
+            # Formatear las columnas 'FE' y 'FP' para que solo contengan la fecha
+            for col in ['FE', 'FP']:
                 if col in df_filtro1.columns:
                     df_filtro1[col] = pd.to_datetime(df_filtro1[col], errors='coerce').dt.date
 
             # Ordenar las columnas según el formato deseado
-            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']]
+            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'FE', 'Número de OT']]
 
             # Crear la tabla con las columnas requeridas
             columnas = ["N°", "DESCRIPCIÓN", "Equipo", "Línea", "Estación", "Sistema", "Plan Matriz", "Ejecutado", "OT"]
@@ -1009,17 +1013,17 @@ def crear_word():
                 df_filtro1 = df_filtrado[df_filtrado['CAT'] == 'CAT 3']
 
             # Eliminar las columnas no requeridas del DataFrame si existen
-            columnas_requeridas = ['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']
+            columnas_requeridas = ['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'FE', 'Número de OT']
             columnas_a_eliminar = [col for col in df_filtro1.columns if col not in columnas_requeridas]
             df_filtro1 = df_filtro1.drop(columns=columnas_a_eliminar, errors='ignore')
 
-            # Formatear las columnas 'F.LIBERACIÓN' y 'FP' para que solo contengan la fecha
-            for col in ['F.LIBERACIÓN', 'FP']:
+            # Formatear las columnas 'FE' y 'FP' para que solo contengan la fecha
+            for col in ['FE', 'FP']:
                 if col in df_filtro1.columns:
                     df_filtro1[col] = pd.to_datetime(df_filtro1[col], errors='coerce').dt.date
 
             # Ordenar las columnas según el formato deseado
-            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'F.LIBERACIÓN', 'Número de OT']]
+            df_filtro1 = df_filtro1[['Descripcion OT', 'Equipo', 'DEP', 'EST', 'SIST', 'FP', 'FE', 'Número de OT']]
 
             # Crear la tabla con las columnas requeridas
             columnas = ["N°", "DESCRIPCIÓN", "Equipo", "Línea", "Estación", "Sistema", "Plan Matriz", "Ejecutado", "OT"]
@@ -1178,26 +1182,28 @@ def crear_word():
 
     try:
         if not df_filtrado.empty:
-            # Eliminar las columnas no requeridas del DataFrame si existen
-            columnas_requeridas = ['Descripcion OT', 'DEP', 'EST', 'CAT', 'Número de OT', 'F.LIBERACIÓN']
-            columnas_a_eliminar = [col for col in df_filtrado.columns if col not in columnas_requeridas]
-            df_filtro2 = df_filtrado.drop(columns=columnas_a_eliminar, errors='ignore')
-            
-            # Formatear las columnas 'F.LIBERACIÓN' y 'FP' para que solo contengan la fecha
-            for col in ['F.LIBERACIÓN', 'FP']:
+            # Filtrar solo las filas donde "TIPO SICE" sea "Avería"
+            df_filtro = df_filtrado[df_filtrado["ESTADO MMS"] == "Emitida"]
+
+            # Definir las columnas requeridas
+            columnas_requeridas = ['Descripcion OT', 'DEP', 'EST', 'CAT', 'Número de OT', 'FE']
+            df_filtro2 = df_filtro[columnas_requeridas].copy()
+
+            # Formatear las columnas de fecha
+            for col in ['FE', 'FP']:
                 if col in df_filtro2.columns:
                     df_filtro2[col] = pd.to_datetime(df_filtro2[col], errors='coerce').dt.date
-            
+
             # Ordenar las columnas según el formato deseado
-            df_filtro2 = df_filtro2[['Descripcion OT', 'DEP', 'EST', 'CAT', 'Número de OT', 'F.LIBERACIÓN']]
-            
-            # Crear la tabla con las columnas requeridas
+            df_filtro2 = df_filtro2[['Descripcion OT', 'DEP', 'EST', 'CAT', 'Número de OT', 'FE']]
+
+            # Crear la tabla en el documento de Word
             columnas = ["N°", "DESCRIPCIÓN", "Línea", "Estación", "CAT", "OT", "Plan Matriz", "Motivo Desviación"]
-            num_filas = df_filtro2.shape[0]  # Número de filas de datos
-            num_columnas = len(columnas)  # Número de columnas predefinidas
-            tabla_desviacion = doc.add_table(rows=num_filas + 1, cols=num_columnas)  # Crear tabla con encabezados y filas de datos
+            num_filas = df_filtro2.shape[0]
+            num_columnas = len(columnas)
+            tabla_desviacion = doc.add_table(rows=num_filas + 1, cols=num_columnas)
             tabla_desviacion.style = 'Table Grid'
-            
+
             # Agregar encabezados
             for j, column_name in enumerate(columnas):
                 cell = tabla_desviacion.cell(0, j)
@@ -1208,7 +1214,7 @@ def crear_word():
                 run.font.size = Pt(6)
                 run.bold = True
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
+
             # Agregar los datos a la tabla
             for i, row in enumerate(df_filtro2.itertuples(index=False), start=1):
                 # Agregar numeración en la primera columna
@@ -1219,7 +1225,7 @@ def crear_word():
                 run.font.name = 'Calibri'
                 run.font.size = Pt(6)
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
+
                 # Agregar el resto de los datos
                 for j, value in enumerate(row, start=1):
                     cell = tabla_desviacion.cell(i, j)
@@ -1229,23 +1235,25 @@ def crear_word():
                     run.font.name = 'Calibri'
                     run.font.size = Pt(6)
                     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
+
                     # Ajustar altura de la fila para la columna de "DESCRIPCIÓN"
                     if columnas[j] == "DESCRIPCIÓN":
                         cell.width = Inches(3)  # Duplicar el espacio en la celda de descripción
-                    
+
                     # Ajustar espacio para la columna "Plan Matriz"
                     if columnas[j] == "Plan Matriz":
                         cell.width = Inches(1.1)
-            
+
             # Centrar texto en todas las celdas
             for row in tabla_desviacion.rows:
                 for cell in row.cells:
                     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
         else:
             doc.add_paragraph('\nNo se encontraron datos para mostrar.')
+
     except Exception as e:
         print(f"Error en la creación del Word: {e}")
+
 
     doc.add_page_break()
 
@@ -1465,11 +1473,13 @@ def crear_word():
 
     try:
         if not df_averias.empty:
+            # Filtrar solo las filas donde "TIPO SICE" sea "Avería"
+            df_filtro = df_averias[df_averias["TIPO SICE"] == "Avería"]
             # Definir las columnas requeridas
             columnas_requeridas = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
                                    "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE"]
             # Filtrar solo las columnas necesarias
-            df_filtro2 = df_averias[columnas_requeridas].copy()
+            df_filtro2 =  df_filtro[columnas_requeridas].copy()
 
             # Formatear la columna 'FECHA HORA INFORME' para que solo contenga la fecha
             if 'FECHA HORA INFORME' in df_filtro2.columns:
