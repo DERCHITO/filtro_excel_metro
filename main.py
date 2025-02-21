@@ -438,66 +438,91 @@ def actualizar_logica(valor):
 df_averias = None
 df_filtrado = None
 df_tabla12prox = None
+df_averias_mes = None
 
 def abrir_averias():
-    global df_averias  
-    try:
-        ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
-        if not ruta_archivo:
-            return  
-
-        df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4, usecols="B:Y")
-
-        columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana", "TIPO SICE"]
-
-        if not all(col in df_otro.columns for col in columnas_necesarias):
-            columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
-            messagebox.showerror("Error", f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}")
+    global df_averias, df_averias_mes
+    ruta_archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
+    if not ruta_archivo:
+        return  
+    df_otro = pd.read_excel(ruta_archivo, dtype=str, skiprows=4, usecols="B:Y")
+    columnas_necesarias = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA", "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana", "TIPO SICE"]
+    if not all(col in df_otro.columns for col in columnas_necesarias):
+        columnas_faltantes = [col for col in columnas_necesarias if col not in df_otro.columns]
+        messagebox.showerror("Error", f"Faltan las siguientes columnas en el archivo: {', '.join(columnas_faltantes)}")
+        return
+    df_otro["FECHA HORA INFORME"] = pd.to_datetime(df_otro["FECHA HORA INFORME"], errors="coerce")
+    if df_otro["FECHA HORA INFORME"].isnull().all():
+        messagebox.showerror("Error", "La columna 'FECHA HORA INFORME' no contiene fechas válidas.")
+        return
+    fecha_minima = df_otro["FECHA HORA INFORME"].min()
+    fecha_maxima = df_otro["FECHA HORA INFORME"].max()
+    ventana_fechas = tk.Toplevel()
+    ventana_fechas.title("Filtrar por Fecha de Informe")
+    ventana_fechas.geometry("800x700")
+    tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
+    calendario_inicio = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
+    calendario_inicio.pack(pady=10)
+    tk.Label(ventana_fechas, text="Fecha de fin:").pack(pady=5)
+    calendario_fin = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
+    calendario_fin.pack(pady=10)
+    def aplicar_filtro():
+        global df_averias, df_averias_mes  # Se agregará df_averias_mes para el segundo filtro
+        ventana_fechas.destroy()
+        fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
+        fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
+        if fecha_inicio > fecha_fin:
+            messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
             return
-
-        df_otro["FECHA HORA INFORME"] = pd.to_datetime(df_otro["FECHA HORA INFORME"], errors="coerce")
-
-        if df_otro["FECHA HORA INFORME"].isnull().all():
-            messagebox.showerror("Error", "La columna 'FECHA HORA INFORME' no contiene fechas válidas.")
+        # 🔹 Filtrar por rango de fechas seleccionado por el usuario
+        df_filtrado = df_otro[(df_otro["FECHA HORA INFORME"] >= fecha_inicio) & 
+                              (df_otro["FECHA HORA INFORME"] <= fecha_fin)]
+        if df_filtrado.empty:
+            messagebox.showinfo("Sin datos", "No se encontraron averías en el rango de fechas seleccionado.")
             return
+        df_averias = df_filtrado[columnas_necesarias]
+        messagebox.showinfo("Éxito", "Los datos se han filtrado correctamente.")
+        # 🔹 Ahora aplicar el filtro para obtener el último mes completo con datos todos los días
+        obtener_mes_con_datos(df_otro)
+    tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro).pack(pady=10)
 
-        fecha_minima = df_otro["FECHA HORA INFORME"].min()
-        fecha_maxima = df_otro["FECHA HORA INFORME"].max()
+    def obtener_mes_con_datos(df):
+        global df_averias_mes
+        """
+        Filtra el DataFrame para obtener los datos del mes correspondiente a la fecha máxima.
+        Si el último día del mes no tiene datos, se selecciona el mes anterior.
+        """
+        # Convertir la columna de fecha a tipo datetime si no lo está
+        df["FECHA HORA INFORME"] = pd.to_datetime(df["FECHA HORA INFORME"], errors="coerce")
 
-        ventana_fechas = tk.Toplevel()
-        ventana_fechas.title("Filtrar por Fecha de Informe")
-        ventana_fechas.geometry("800x700")
+        # Obtener la fecha máxima del DataFrame
+        fecha_maxima = df["FECHA HORA INFORME"].max()
 
-        tk.Label(ventana_fechas, text="Fecha de inicio:").pack(pady=5)
-        calendario_inicio = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
-        calendario_inicio.pack(pady=10)
+        if pd.isna(fecha_maxima):
+            print("No hay fechas disponibles en los datos.")
+            return pd.DataFrame()  # Retornar DataFrame vacío
 
-        tk.Label(ventana_fechas, text="Fecha de fin:").pack(pady=5)
-        calendario_fin = Calendar(ventana_fechas, selectmode="day", date_pattern="yyyy-mm-dd", mindate=fecha_minima, maxdate=fecha_maxima)
-        calendario_fin.pack(pady=10)
+        # Obtener el último día del mes de la fecha máxima
+        ultimo_dia_mes = pd.Timestamp(fecha_maxima.year, fecha_maxima.month, 1).days_in_month
+        fecha_ultimo_dia = pd.Timestamp(fecha_maxima.year, fecha_maxima.month, ultimo_dia_mes)
 
-        def aplicar_filtro():
-            global df_averias  
-            ventana_fechas.destroy()
-            fecha_inicio = datetime.strptime(calendario_inicio.get_date(), "%Y-%m-%d")
-            fecha_fin = datetime.strptime(calendario_fin.get_date(), "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
+        # Verificar si hay datos en el último día del mes
+        tiene_datos_ultimo_dia = not df[df["FECHA HORA INFORME"].dt.date == fecha_ultimo_dia.date()].empty
 
-            if fecha_inicio > fecha_fin:
-                messagebox.showerror("Error", "La fecha de inicio no puede ser mayor que la fecha de fin.")
-                return
-
-            df_filtrado = df_otro[(df_otro["FECHA HORA INFORME"] >= fecha_inicio) & (df_otro["FECHA HORA INFORME"] <= fecha_fin)]
-
-            if df_filtrado.empty:
-                messagebox.showinfo("Sin datos", "No se encontraron averías en el rango de fechas seleccionado.")
-                return
-
-            df_averias = df_filtrado[columnas_necesarias]
-            messagebox.showinfo("Éxito", "Los datos se han filtrado correctamente.")
-
-        tk.Button(ventana_fechas, text="Aplicar Filtro", command=aplicar_filtro).pack(pady=10)
-    except Exception as e:
-        messagebox.showerror("Error", f"No se pudo leer el archivo:\n{e}")
+        if tiene_datos_ultimo_dia:
+            # ✅ Si el último día tiene datos, filtrar SOLO el mes de la fecha máxima
+            df_averias_mes = df[
+                (df["FECHA HORA INFORME"].dt.year == fecha_maxima.year) &
+                (df["FECHA HORA INFORME"].dt.month == fecha_maxima.month)
+            ]
+            print(f"Se encontraron datos para {fecha_maxima.month}/{fecha_maxima.year}.")
+        else:
+            # ❌ Si NO hay datos el último día del mes, tomar el mes anterior
+            mes_anterior = fecha_maxima.replace(day=1) - timedelta(days=1)  # Último día del mes anterior
+            df_averias_mes = df[
+                (df["FECHA HORA INFORME"].dt.year == mes_anterior.year) &
+                (df["FECHA HORA INFORME"].dt.month == mes_anterior.month)]
+            print(f"Se encontraron datos para el mes anterior {mes_anterior.month}/{mes_anterior.year}.")
 
 def abrir_programacion():
     global df_filtrado, df_tabla12prox  
@@ -1688,11 +1713,13 @@ def crear_word():
     
     try:
         if not df_averias.empty:
+            # Filtrar solo las filas donde "TIPO SICE" sea "Avería"
+            df_filtro = df_averias_mes[df_averias_mes["TIPO SICE"] == "Avería"]
             # Definir las columnas requeridas
             columnas_requeridas = ["LINEA", "EMPLAZAMIENTO", "OT", "DESCRIPCIÓN DE LA FALLA",
                                    "ACTIVO", "CAT ", "TIPO", "FECHA HORA INFORME", "ESTADO SICE", "Semana"]
             # Filtrar solo las columnas necesarias
-            df_filtro2 = df_averias[columnas_requeridas].copy()
+            df_filtro2 = df_filtro[columnas_requeridas].copy()
 
             # Formatear la columna 'FECHA HORA INFORME' para que solo contenga la fecha
             if 'FECHA HORA INFORME' in df_filtro2.columns:
