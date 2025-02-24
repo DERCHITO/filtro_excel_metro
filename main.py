@@ -522,7 +522,6 @@ def abrir_averias():
             df_averias_mes = df[
                 (df["FECHA HORA INFORME"].dt.year == mes_anterior.year) &
                 (df["FECHA HORA INFORME"].dt.month == mes_anterior.month)]
-            print(f"Se encontraron datos para el mes anterior {mes_anterior.month}/{mes_anterior.year}.")
 
 def abrir_programacion():
     global df_filtrado, df_tabla12prox  
@@ -618,11 +617,18 @@ def abrir_programacion():
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo abrir el archivo Excel:\n{e}")
 
+def check_missing_data():
+    if df_averias is None:
+        messagebox.showwarning("Advertencia", "Falta el archivo de averías.")
+    if df_filtrado is None:
+        messagebox.showwarning("Advertencia", "Falta el archivo de programación.")
 
 def crear_word():
     global df_tabla12prox
     # Crear un nuevo documento de Word
     doc = Document()
+    
+    check_missing_data()
 
     doc.add_paragraph('\n'*2)
 
